@@ -70,7 +70,7 @@ decompiler.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
 ```
 
 ## 注意事项
-在反编译出来的伪代码中，可能存在一些“伪函数”，用于代表无法方便地翻译成伪代码的一些操作。例如，获取词法环境的操作由 `__get_lexenv__` 来代表。
+在反编译出来的伪代码中，可能存在一些“伪函数”，用于代表无法方便地翻译成伪代码的一些操作。例如，获取[词法环境](https://gitee.com/openharmony/docs/blob/master/zh-cn/application-dev/quick-start/arkts-bytecode-fundamentals.md#%E8%AF%8D%E6%B3%95%E7%8E%AF%E5%A2%83%E5%92%8C%E8%AF%8D%E6%B3%95%E5%8F%98%E9%87%8F)的操作由 `__get_lexenv__` 来代表。
 
 某些伪函数可以手动实现，例如 `__assert_defined__` 可以实现为：
 

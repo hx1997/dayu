@@ -70,7 +70,7 @@ decompiler.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
 ```
 
 ## Caveats
-In the final pseudocode, there may be some "pseudo-functions". They stand for operations that can't be easily translated. For example, retrieving lexical environment is represented as `__get_lexenv__`.
+In the final pseudocode, there may be some "pseudo-functions". They stand for operations that can't be easily translated. For example, retrieving [lexical environment](https://gitee.com/openharmony/docs/blob/master/en/application-dev/quick-start/arkts-bytecode-fundamentals.md#lexical-environment-and-lexical-variable) is represented as `__get_lexenv__`.
 
 Some pseudo-functions can be manually implemented. For example, `__assert_defined__` may be implemented as:
 
