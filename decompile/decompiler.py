@@ -145,13 +145,18 @@ class Decompiler:
             if self.config.max_no_mlir_passes_iterations == 0:
                 break
             is_first = False
-            DefUseAnalysis().run_on_method(method)
-            in_l, out_l = LiveVariableAnalysis().run_on_method(method)
             # in_r, out_r = ReachingDefinitions().run_on_method(method)
             if DecompileOutputLevel.MEDIUM_LEVEL_IR in self.config.copy_propagation_enabled_levels:
                 CopyPropagation(constrained=True).run_on_method(method)
+
+            DefUseAnalysis().run_on_method(method)
+            in_l, out_l = LiveVariableAnalysis().run_on_method(method)
             if DecompileOutputLevel.MEDIUM_LEVEL_IR in self.config.dead_code_elimination_enabled_levels:
                 DeadCodeElimination(out_l).run_on_method(method)
+
+            # update liveness
+            DefUseAnalysis().run_on_method(method)
+            in_l, out_l = LiveVariableAnalysis().run_on_method(method)
             if DecompileOutputLevel.MEDIUM_LEVEL_IR in self.config.peephole_optimization_enabled_levels:
                 PeepholeOptimization(out_l, constrained=True).run_on_method(method)
 
@@ -171,13 +176,18 @@ class Decompiler:
 
     def mlir_to_hlir(self, method: IRMethod):
         # convert to high-level IR
-        DefUseAnalysis().run_on_method(method)
-        in_l, out_l = LiveVariableAnalysis().run_on_method(method)
         # in_r, out_r = ReachingDefinitions().run_on_method(method)
         if DecompileOutputLevel.HIGH_LEVEL_IR in self.config.copy_propagation_enabled_levels:
             CopyPropagation(constrained=False).run_on_method(method)
+
+        DefUseAnalysis().run_on_method(method)
+        in_l, out_l = LiveVariableAnalysis().run_on_method(method)
         if DecompileOutputLevel.HIGH_LEVEL_IR in self.config.dead_code_elimination_enabled_levels:
             DeadCodeElimination(out_l).run_on_method(method)
+
+        # update liveness
+        DefUseAnalysis().run_on_method(method)
+        in_l, out_l = LiveVariableAnalysis().run_on_method(method)
         if DecompileOutputLevel.HIGH_LEVEL_IR in self.config.peephole_optimization_enabled_levels:
             PeepholeOptimization(out_l, constrained=False).run_on_method(method)
 
