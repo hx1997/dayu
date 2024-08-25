@@ -42,7 +42,7 @@ from decompile.config import DecompilerConfig, DecompileGranularity, DecompileOu
 from decompile.decompiler import Decompiler
 from pandasm.reader import PandasmReader
 
-# 指定输入文件，文本形式的方舟字节码（Panda Assembly，可通过 SDK 中的 ark_disasm 反汇编 abc 得到）
+# 指定输入文件，文本形式的方舟字节码（Panda Assembly，可通过 SDK 中的 ark_disasm 反汇编 abc 得到）为反编译所必需的输入
 abcfile = AbcReader.from_file('<abc 文件路径>')
 pafile = PandasmReader.from_file('<Panda Assembly 文件路径>')
 
