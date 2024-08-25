@@ -76,6 +76,13 @@
     "read": [2, 3],
     "write": [0]
   },
+  "mod2": {
+    "opcode": "0xe",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
   "eq": {
     "opcode": "0xf",
     "num_args": 4,
@@ -85,6 +92,83 @@
   },
   "noteq": {
     "opcode": "0x10",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "less": {
+    "opcode": "0x11",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "lesseq": {
+    "opcode": "0x12",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "greater": {
+    "opcode": "0x13",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "greatereq": {
+    "opcode": "0x14",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "shl2": {
+    "opcode": "0x15",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "shr2": {
+    "opcode": "0x16",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "ashr2": {
+    "opcode": "0x17",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "and2": {
+    "opcode": "0x18",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "or2": {
+    "opcode": "0x19",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "xor2": {
+    "opcode": "0x1a",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "exp": {
+    "opcode": "0x1b",
     "num_args": 4,
     "arg_types": ["acc", "imm", "reg", "acc"],
     "read": [2, 3],
@@ -104,6 +188,27 @@
     "read": [1],
     "write": [0]
   },
+  "not": {
+    "opcode": "0x20",
+    "num_args": 3,
+    "arg_types": ["acc", "acc", "imm"],
+    "read": [1],
+    "write": [0]
+  },
+  "inc": {
+    "opcode": "0x21",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "dec": {
+    "opcode": "0x22",
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
   "istrue": {
     "opcode": ["0x23"],
     "num_args": 2,
@@ -120,6 +225,13 @@
   },
   "isin": {
     "opcode": ["0x25"],
+    "num_args": 4,
+    "arg_types": ["acc", "imm", "reg", "acc"],
+    "read": [2, 3],
+    "write": [0]
+  },
+  "instanceof": {
+    "opcode": ["0x26"],
     "num_args": 4,
     "arg_types": ["acc", "imm", "reg", "acc"],
     "read": [2, 3],
@@ -337,6 +449,13 @@
   },
   "poplexenv": {
     "opcode": "0x69",
+    "num_args": 0,
+    "arg_types": [],
+    "read": [],
+    "write": []
+  },
+  "ldhole": {
+    "opcode": "0x70",
     "num_args": 0,
     "arg_types": [],
     "read": [],

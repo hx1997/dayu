@@ -74,6 +74,10 @@ class InsnLifter:
         builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='/', label=insn.label)
 
     @staticmethod
+    def mod2(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='mod', label=insn.label)
+
+    @staticmethod
     def eq(insn: NAddressCode, builder: IRBuilder):
         builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='==', label=insn.label)
 
@@ -82,12 +86,68 @@ class InsnLifter:
         builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='!=', label=insn.label)
 
     @staticmethod
+    def less(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='<', label=insn.label)
+
+    @staticmethod
+    def lesseq(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='<=', label=insn.label)
+
+    @staticmethod
+    def greater(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='>', label=insn.label)
+
+    @staticmethod
+    def greatereq(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='>=', label=insn.label)
+
+    @staticmethod
+    def shl2(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='<<', label=insn.label)
+
+    @staticmethod
+    def shr2(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='>>>', label=insn.label)
+
+    @staticmethod
+    def ashr2(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='>>', label=insn.label)
+
+    @staticmethod
+    def and2(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='&', label=insn.label)
+
+    @staticmethod
+    def or2(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='|', label=insn.label)
+
+    @staticmethod
+    def xor2(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='^', label=insn.label)
+
+    @staticmethod
+    def exp(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='**', label=insn.label)
+
+    @staticmethod
     def typeof(insn: NAddressCode, builder: IRBuilder):
         builder.create_assign_rhs_uop(PandasmInsnArgument('acc'), rhs_op='typeof', label=insn.label)
 
     @staticmethod
     def neg(insn: NAddressCode, builder: IRBuilder):
         builder.create_assign_rhs_uop(PandasmInsnArgument('acc'), rhs_op='-', label=insn.label)
+
+    @staticmethod
+    def not_(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_uop(PandasmInsnArgument('acc'), rhs_op='~', label=insn.label)
+
+    @staticmethod
+    def inc(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(PandasmInsnArgument('acc'), PandasmInsnArgument('imm', '0x1'), rhs_op='+', label=insn.label)
+
+    @staticmethod
+    def dec(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(PandasmInsnArgument('acc'), PandasmInsnArgument('imm', '0x1'), rhs_op='-', label=insn.label)
 
     @staticmethod
     def istrue(insn: NAddressCode, builder: IRBuilder):
@@ -100,6 +160,10 @@ class InsnLifter:
     @staticmethod
     def isin(insn: NAddressCode, builder: IRBuilder):
         builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='in', label=insn.label)
+
+    @staticmethod
+    def instanceof(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='instanceof', label=insn.label)
 
     @staticmethod
     def strictnoteq(insn: NAddressCode, builder: IRBuilder):
@@ -292,6 +356,10 @@ class InsnLifter:
     def poplexenv(insn: NAddressCode, builder: IRBuilder):
         cur_lexenv_arg = PandasmInsnArgument('cur_lexenv_level', '')
         builder.create_assign_rhs_bop(cur_lexenv_arg, PandasmInsnArgument('imm', '1'), cur_lexenv_arg, '-', label=insn.label)
+
+    @staticmethod
+    def ldhole(insn: NAddressCode, builder: IRBuilder):
+        builder.create_assign(PandasmInsnArgument('hole'), label=insn.label)
 
     @staticmethod
     def stownbyname(insn: NAddressCode, builder: IRBuilder):

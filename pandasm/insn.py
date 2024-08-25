@@ -66,7 +66,7 @@ class PandasmInsnArgument:
         :param arg_type: can be one of:
           'acc', 'undefined', 'null', 'true', 'false', 'zero', 'FunctionObject', 'NewTarget',
           'cur_lexenv_level, 'lexenv_xxx', 'lexenv', 'field', 'array', 'reg', 'str', 'imm', 'arr', 'module',
-          'litarr', 'func', 'tmp', 'object'
+          'litarr', 'func', 'tmp', 'object', 'hole'
 
         :param arg_value:
         :param arg_ref_obj:
@@ -130,4 +130,4 @@ class PandasmInsnArgument:
 
     def is_verbatim_type(self):
         return self.type in ['acc', 'undefined', 'null', 'true', 'false', 'zero', 'FunctionObject', 'NewTarget',
-                         'cur_lexenv_level'] or self.type.startswith('lexenv')
+                         'cur_lexenv_level', 'hole'] or self.type.startswith('lexenv')
