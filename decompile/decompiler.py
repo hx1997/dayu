@@ -192,7 +192,7 @@ class Decompiler:
         ViewCFG(output_path, view).run_on_method(method)
 
     def print_ir(self, method: IRMethod):
-        if self.decompiled_ir_level is not DecompileOutputLevel.PSEUDOCODE:
+        if self.decompiled_ir_level is DecompileOutputLevel.PSEUDOCODE:
             print('error: only IR can be printed', file=sys.stderr, flush=True)
         else:
             for block in method.blocks:
@@ -207,6 +207,6 @@ class Decompiler:
 
     def print_code(self, method: IRMethod):
         if self.decompiled_ir_level is DecompileOutputLevel.PSEUDOCODE:
-            self.print_ir(method)
+            self.print_pseudocode(method)
         else:
             self.print_ir(method)

@@ -78,8 +78,8 @@ class ControlFlowStructuring(MethodPass):
                     follow_node = candidate_follow_node
             self.follow_nodes[cond_node] = (follow_node, cond_node_order)  # keep track of the order and follow this order in recover_if
 
-        # for block in method.blocks:
-        #     self.insert_jump_at_block_end(block)
+        for block in method.blocks:
+            self.insert_jump_at_block_end(block)
 
         if self.recover_structures:
             self.recover_if()
