@@ -196,16 +196,16 @@
     "write": [0]
   },
   "inc": {
-    "opcode": "0x21",
-    "num_args": 4,
-    "arg_types": ["acc", "imm", "reg", "acc"],
+    "opcode": ["0x21"],
+    "num_args": 3,
+    "arg_types": ["acc", "acc", "imm"],
     "read": [2, 3],
     "write": [0]
   },
   "dec": {
-    "opcode": "0x22",
-    "num_args": 4,
-    "arg_types": ["acc", "imm", "reg", "acc"],
+    "opcode": ["0x22"],
+    "num_args": 3,
+    "arg_types": ["acc", "acc", "imm"],
     "read": [2, 3],
     "write": [0]
   },
