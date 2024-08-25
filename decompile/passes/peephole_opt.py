@@ -28,19 +28,23 @@ class PeepholeOptimization(MethodPass):
         for idx, insn in enumerate(block_insns_copy):
             if idx == 0:
                 continue
-            # for now, all optimization cases in this method involves instructions that have exactly two arguments
-            if len(insn.args) != 2 or len(block_insns_copy[idx - 1].args) != 2:
-                continue
             # case 0: eliminate "a = a", which could result from CopyPropagation replacing copies
             # take extra care that the rhs doesn't have an operator
             if insn.type == NAddressCodeType.ASSIGN and insn.args[0] == insn.args[1] and insn.op == '':
                 insn.erase_from_parent()
                 continue
             if self.constrained:
+                # for now, all optimization cases in this method deal with instructions that have exactly two arguments
+                if len(insn.args) != 2 or len(block_insns_copy[idx - 1].args) != 2:
+                    continue
                 if insn.type != NAddressCodeType.ASSIGN or block_insns_copy[idx - 1].type != NAddressCodeType.ASSIGN:
                     self.eliminate_stld_lexvar_pattern(idx, insn, block_insns_copy)
                     continue
             else:
+                # for now, all optimization cases in this method deal with instructions that have exactly two arguments
+                # in unconstrained mode, we may need to collapse method calls, so check only for ASSIGNs
+                if insn.type == NAddressCodeType.ASSIGN and len(insn.args) != 2 or len(block_insns_copy[idx - 1].args) != 2:
+                    continue
                 if insn.type not in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL] or block_insns_copy[idx - 1].type != NAddressCodeType.ASSIGN:
                     self.eliminate_stld_lexvar_pattern(idx, insn, block_insns_copy)
                     continue
