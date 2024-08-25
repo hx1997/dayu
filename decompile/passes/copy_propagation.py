@@ -27,30 +27,26 @@ class CopyPropagation(MethodPass):
         for insn in block.insns:
             if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:
                 self.analyze_assign(insn, def_block, gen_block)
-            elif insn.type == NAddressCodeType.UNKNOWN:
-                self.analyze_unknown(insn, def_block)
             if stop_after_insn == insn:
                 break
 
         for copy_ in copies:
-            # each `copy` is a tuple (block_hash, arg1 (lhs), arg2 (rhs)) and possibly
-            # with additional elements operator and argn (remaining arguments on rhs)
-            if len(copy_) == 5:
+            if len(copy_.args) == 2:
                 for definition in def_block:
-                    if definition[2] in [copy_[2], copy_[3]]:
+                    if definition.args[0] in [copy_.args[0], copy_.args[1]]:
                         # if for this copy, say x=y, either x or y is redefined in this block, then add it to kill set
                         kill_block.add(copy_)
                     # another case is instructions like acc = reg:v2["abc"], where the array access is treated as one
                     # argument, but actually uses reg:v2 AND "abc" separately
                     # in this case, reg:v2 being redefined also means the copy no longer has
                     # the original value, i.e. killed
-                    if copy_[3].ref_obj:
+                    if copy_.args[1].ref_obj:
                         # if reg:v2 is redefined, add it to kill set
-                        if definition[2] == copy_[3].ref_obj:
+                        if definition.args[0] == copy_.args[1].ref_obj:
                             kill_block.add(copy_)
-            elif len(copy_) > 5:
+            elif len(copy_.args) >= 3:
                 for definition in def_block:
-                    if definition[2] in [copy_[2], copy_[3], *copy_[5:]]:
+                    if definition.args[0] in [copy_.args[0], copy_.args[1], *copy_.args[2:]]:
                         # if for this copy, say x=y+z, any of x, y and z is redefined in this block, add it to kill set
                         kill_block.add(copy_)
 
@@ -61,52 +57,46 @@ class CopyPropagation(MethodPass):
         for block in method.blocks:
             for insn in block.insns:
                 if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:
-                    if len(insn.args) == 2:
-                        copies.add((block, insn, insn.args[0], insn.args[1], insn.op))
-                    elif len(insn.args) >= 3:
-                        copies.add((block, insn, insn.args[0], insn.args[1], insn.op, *insn.args[2:]))
+                    copies.add(insn)
                 if insn == stop_after_insn:
                     break
         return copies
 
     def analyze_assign(self, insn: NAddressCode, def_block, gen_block):
-        def_block.add((insn.parent_block, insn, insn.args[0], insn.args[1]))
+        def_block.add(insn)
 
         # gen is the set of copies (x=y) defined in this block without x or y being subsequently redefined in it
         # first add to the set this assign (i.e. copy) instruction
-        this_insn = None
         if len(insn.args) == 2:
-            this_insn = (insn.parent_block, insn, insn.args[0], insn.args[1], insn.op)
-            gen_block.add(this_insn)
+            gen_block.add(insn)
         elif len(insn.args) >= 3:
             # for the three-argument ASSIGN case x=y+z and the CALL case x = y(z1,z2,...)
-            this_insn = (insn.parent_block, insn, insn.args[0], insn.args[1], insn.op, *insn.args[2:])
-            gen_block.add(this_insn)
+            gen_block.add(insn)
 
         # then, remove a previous copy from the gen set if any argument in it is redefined
         gen_block_copy = gen_block.copy()
         for copy in gen_block_copy:
             try:
                 # don't remove what we've just added
-                if copy == this_insn:
+                if copy == insn:
                     continue
-                if copy[2] == insn.args[0]:
+                if copy.args[0] == insn.args[0]:
                     gen_block.remove(copy)
                     continue
-                if copy[3] == insn.args[0]:
+                if copy.args[1] == insn.args[0]:
                     gen_block.remove(copy)
                     continue
                 # for copies like acc = reg:v2["abc"], where a subsequent redefinition of reg:v2 should cause a removal
-                if copy[3].ref_obj and insn.args[0] == copy[3].ref_obj:
+                if copy.args[1].ref_obj and insn.args[0] == copy.args[1].ref_obj:
                     gen_block.remove(copy)
                     continue
                 # for copies like reg:v2 = {}, a subsequent reg:v2["abc"] = acc should cause the removal of reg:v2
-                if insn.args[0].ref_obj and insn.args[0].ref_obj == copy[2]:
+                if insn.args[0].ref_obj and insn.args[0].ref_obj == copy.args[0]:
                     gen_block.remove(copy)
                     continue
                 # for three-argument ASSIGN case and the CALL case, take any additional arguments on rhs into account
-                if len(copy) > 5:
-                    extra_args = copy[5:]
+                if len(copy.args) >= 3:
+                    extra_args = copy.args[2:]
                     if insn.args[0] in extra_args:
                         gen_block.remove(copy)
                         continue
@@ -116,26 +106,6 @@ class CopyPropagation(MethodPass):
                             gen_block.remove(copy)
                             continue
             except KeyError:
-                pass
-
-    def analyze_unknown(self, insn: NAddressCode, def_block):
-        """
-        for UNKNOWN NACs, since we don't know what this NAC does, we must assume the worst scenario:
-        all operands involved are defined and used, but no operand is generated (i.e. all killed without regeneration)
-        """
-        for operand in insn.args:
-            # some heuristics to infer what type this operand is
-            if operand == 'acc':
-                acc = PandasmInsnArgument('acc')
-                this_insn = (insn.parent_block, insn, acc)
-                def_block.add(this_insn)
-            elif operand.startswith('a') or operand.startswith('v'):
-                reg = PandasmInsnArgument('reg', operand)
-                this_insn = (insn.parent_block, insn, reg)
-                def_block.add(this_insn)
-            elif operand.startswith('0x') or operand.startswith('"') or operand.startswith(
-                    'jump_label') or operand.startswith('com.'):
-                # immediates, strings, jump labels and functions are constants, so these are not targets of our analysis
                 pass
 
     def copy_propagation(self, method: IRMethod, gen, kill, copies):
@@ -179,7 +149,7 @@ class CopyPropagation(MethodPass):
         #  copy propagation
         for block, copies_reaching_block in in_c.items():
             for copy_ in copies:
-                if len(copy_) > 5:
+                if len(copy_.args) >= 3:
                     # only replace copies of the form x=y (one argument on the rhs) for simplicity
                     continue
                 for insn in block.insns:
@@ -188,13 +158,13 @@ class CopyPropagation(MethodPass):
                         vars_use = self.analyze_assign_for_replace(insn)
                     elif insn.type in [NAddressCodeType.COND_JUMP, NAddressCodeType.COND_THROW]:
                         vars_use = self.analyze_cond_jump_throw_for_replace(insn)
-                    if copy_[2] in vars_use:
+                    if copy_.args[0] in vars_use:
                         # TODO: these two statements are repeated for each copy and for each instruction in the block,
                         #  which is extremely time-consuming
                         copies_until_this_insn = self.collect_copies(block.parent_method, stop_after_insn=insn)
                         gen, kill = self.analyze_gen_kill(block, copies_until_this_insn, stop_after_insn=insn)
                         if copy_ in copies_reaching_block.difference(kill).union(gen):
-                            self.replace_var_use(insn, copy_, in_c)
+                            self.replace_var_use(insn, copy_)
 
     def analyze_assign_for_replace(self, insn: NAddressCode):
         vars_use = OrderedSet([insn.args[1]])
@@ -214,27 +184,8 @@ class CopyPropagation(MethodPass):
                 vars_use.add(arg.ref_obj)
         return vars_use
 
-    def analyze_unknown_for_replace(self, insn: NAddressCode):
-        """
-        for UNKNOWN NACs, since we don't know what this NAC does, we must assume the worst scenario:
-        all operands involved are defined and used
-        """
-        vars_use = OrderedSet()
-        for operand in insn.args:
-            # some heuristics to infer what type this operand is
-            if operand == 'acc':
-                acc = PandasmInsnArgument('acc')
-                vars_use.add(acc)
-            elif operand.startswith('a') or operand.startswith('v'):
-                reg = PandasmInsnArgument('reg', operand)
-                vars_use.add(reg)
-            elif operand.startswith('0x') or operand.startswith('"') or operand.startswith(
-                    'jump_label') or operand.startswith('com.'):
-                # immediates, strings, jump labels and functions are constants, so these are not targets of our analysis
-                pass
-
-    def replace_var_use(self, insn: NAddressCode, copy_tuple, in_c):
-        var_to_replace, replace_with, copy_op, copy_comment = copy_tuple[2], copy_tuple[3], copy_tuple[4], copy_tuple[1].comment
+    def replace_var_use(self, insn: NAddressCode, copy_):
+        var_to_replace, replace_with, copy_op, copy_comment = copy_.args[0], copy_.args[1], copy_.op, copy_.comment
         if (self.constrained and replace_with.ref_obj) or (not self.constrained and var_to_replace == replace_with.ref_obj):
             # in cases like "acc = acc['xxx']", when var_to_replace == acc, and replace_with == acc['xxx'],
             # replacing results in infinite recursion ("acc['xxx'] = acc['xxx']['xxx'] and so on), so skip it
@@ -265,42 +216,11 @@ class CopyPropagation(MethodPass):
                 if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL] and idx == 0:
                     continue
                 if arg == var_to_replace:
-                    # update copies_reaching_block, which is used in the next iteration in replace_copies()
-                    self.update_copies_reaching_block(in_c, insn, idx, replace_with)
                     insn.args[idx] = replace_with
                 if arg.ref_obj and arg.ref_obj == var_to_replace:
-                    # update copies_reaching_block, which is used in the next iteration in replace_copies()
-                    self.update_copies_reaching_block(in_c, insn, idx, replace_with)
                     insn.args[idx].ref_obj = replace_with
                 if copy_comment:
                     # if the original copy has a comment, append it to this instruction
                     # because copy propagation could render the original copy dead code and
                     # therefore eliminated
                     insn.comment = copy_comment
-
-    def update_copies_reaching_block(self, in_c, insn, insn_replaced_idx, replace_with):
-        """
-        when a variable is replaced, the values in dict `in_c` should be updated accordingly
-        e.g. we have value (<decompile.ir.basicblock.IRBlock object at 0x00000199A4B852D0>, v11 = v5, v11, v5, ''),
-        if we replaced v5 with a5 in the second element (which is done by replace_var_use()),
-        the fourth element should be updated too
-        """
-        if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:
-            if len(insn.args) == 2:
-                insn_tuple = (insn.parent_block, insn, insn.args[0], insn.args[1], insn.op)
-            elif len(insn.args) >= 3:
-                # for the three-argument ASSIGN case x=y+z and the CALL case x = y(z1,z2,...)
-                insn_tuple = (insn.parent_block, insn, insn.args[0], insn.args[1], insn.op, *insn.args[2:])
-
-            for block, copies_reaching_block in in_c.items():
-                if insn_tuple in copies_reaching_block:
-                    copies_reaching_block.remove(insn_tuple)
-                    if insn_replaced_idx == 0:
-                        new_tuple = (insn_tuple[0], insn_tuple[1], replace_with, *insn_tuple[3:])
-                    elif insn_replaced_idx == 1:
-                        new_tuple = (insn_tuple[0], insn_tuple[1], insn_tuple[2], replace_with, *insn_tuple[4:])
-                    elif insn_replaced_idx >= 2:
-                        new_tuple_list = list(insn_tuple)
-                        new_tuple_list[5 + (insn_replaced_idx - 2)] = replace_with
-                        new_tuple = tuple(new_tuple_list)
-                    copies_reaching_block.add(new_tuple)
