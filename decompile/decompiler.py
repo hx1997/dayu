@@ -93,25 +93,36 @@ class Decompiler:
         if self.config.output_level is DecompileOutputLevel.RAW_IR:
             return method
 
-        # method = ir_module.classes[120].methods[13]
         self.rawir_to_llir(method)
         self.decompiled_ir_level = DecompileOutputLevel.LOW_LEVEL_IR
         if self.config.output_level is DecompileOutputLevel.LOW_LEVEL_IR:
+            if self.config.view_cfg:
+                self.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
+                print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
             return method
 
         self.llir_to_mlir(method)
         self.decompiled_ir_level = DecompileOutputLevel.MEDIUM_LEVEL_IR
         if self.config.output_level is DecompileOutputLevel.MEDIUM_LEVEL_IR:
+            if self.config.view_cfg:
+                self.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
+                print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
             return method
 
         self.mlir_to_hlir(method)
         self.decompiled_ir_level = DecompileOutputLevel.HIGH_LEVEL_IR
         if self.config.output_level is DecompileOutputLevel.HIGH_LEVEL_IR:
+            if self.config.view_cfg:
+                self.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
+                print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
             return method
 
         self.hlir_to_pseudocode(method)
         self.decompiled_ir_level = DecompileOutputLevel.PSEUDOCODE
         if self.config.output_level is DecompileOutputLevel.PSEUDOCODE:
+            if self.config.view_cfg:
+                self.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
+                print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
             return method
 
         return method

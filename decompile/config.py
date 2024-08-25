@@ -41,6 +41,8 @@ class DecompilerConfig:
         # each element should be a tuple (subclass of MethodPass, list of arguments to the constructor)
         self.extra_mlir_passes: typing.List[typing.Tuple[typing.Callable, typing.List]] = []
 
+        self.view_cfg = False
+
     def set_config(self, config: dict):
         self.abc_file = config.get('abc', self.abc_file)
         self.pandasm_file = config.get('pandasm', self.pandasm_file)
@@ -60,6 +62,7 @@ class DecompilerConfig:
         self.recover_control_flow_structures = config.get('recover_control_flow_structures',
                                                           self.recover_control_flow_structures)
         self.extra_mlir_passes = config.get('extra_mlir_passes', self.extra_mlir_passes)
+        self.view_cfg = config.get('view_cfg', self.view_cfg)
 
 
 class DecompileOutputLevel(IntEnum):

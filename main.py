@@ -80,7 +80,8 @@ def decompile(args, abcfile, pafile):
     config = DecompilerConfig({
         'abc': abcfile,
         'pandasm': pafile,
-        'output_level': output_level_str_to_obj[args.output_level] if args.output_level else DecompileOutputLevel.PSEUDOCODE
+        'output_level': output_level_str_to_obj[args.output_level] if args.output_level else DecompileOutputLevel.PSEUDOCODE,
+        'view_cfg': args.view_cfg
     })
     if args.decompile_method:
         config.set_config({
@@ -93,10 +94,6 @@ def decompile(args, abcfile, pafile):
         print(f'Decompiled method {args.decompile_method} in class {args.decompile_class}:', flush=True)
         decompiler.print_code(method)
         print('', flush=True)
-
-        if args.view_cfg:
-            decompiler.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
-            print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
     elif args.decompile_class:
         config.set_config({
             'class': args.decompile_class,
@@ -108,10 +105,6 @@ def decompile(args, abcfile, pafile):
             print(f'Decompiled method {method.name} in class {args.decompile_class}:', flush=True)
             decompiler.print_code(method)
             print('', flush=True)
-
-            if args.view_cfg:
-                decompiler.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
-                print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
     elif args.decompile_module:
         config.set_config({
             'granularity': DecompileGranularity.MODULE
