@@ -48,13 +48,11 @@ pafile = PandasmReader.from_file('<Panda Assembly 文件路径>')
 
 # 配置反编译器
 config = DecompilerConfig({
-        'abc': abcfile,
-        'pandasm': pafile,
-        'output_level': DecompileOutputLevel.PSEUDOCODE
-    })
-config.set_config({
-    'class': '<要反编译的方法所在类名>',
-    'method': '<要反编译的方法名>',
+    'abc': abcfile,
+    'pandasm': pafile,
+    'output_level': DecompileOutputLevel.PSEUDOCODE,
+    'class': '<name of class containing the method to decompile>',
+    'method': '<name of method to decompile>',
     'granularity': DecompileGranularity.METHOD
 })
 

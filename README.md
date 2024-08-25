@@ -48,11 +48,9 @@ pafile = PandasmReader.from_file('<path to Panda Assembly file>')
 
 # configure the decompiler
 config = DecompilerConfig({
-        'abc': abcfile,
-        'pandasm': pafile,
-        'output_level': DecompileOutputLevel.PSEUDOCODE
-    })
-config.set_config({
+    'abc': abcfile,
+    'pandasm': pafile,
+    'output_level': DecompileOutputLevel.PSEUDOCODE,
     'class': '<name of class containing the method to decompile>',
     'method': '<name of method to decompile>',
     'granularity': DecompileGranularity.METHOD
