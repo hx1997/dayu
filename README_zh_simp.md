@@ -101,8 +101,7 @@ v3 = v2
 v2 = ""
 v2 = v3 + v2
 v3 = v2
-v2 = @ohos:hilog["info"]
-v2 = v2(FunctionObject, NewTarget, @ohos:hilog, 0x0, "hello", v3)
+v2 = @ohos:hilog["info"](FunctionObject, NewTarget, @ohos:hilog, 0x0, "hello", v3)
 tonumeric 0x7
 v2 = v0
 v2 = v2 + 0x1
