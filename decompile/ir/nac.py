@@ -54,11 +54,11 @@ class NAddressCode:
         self.op = op
         self.args = args
         self.type = nac_type
+        self.label = label_name
+        self.comment = comment
         self.parent_block = parent_block
         if self.parent_block:
             self.parent_block.insert_insn(self)
-        self.label = label_name
-        self.comment = comment
 
     def __str__(self):
         if self.type == NAddressCodeType.ASSIGN:
