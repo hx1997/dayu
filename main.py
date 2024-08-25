@@ -120,7 +120,7 @@ def decompile(args, abcfile, pafile):
         module = decompiler.decompile()
         for clz in module.classes:
             for method in clz.methods:
-                print(f'Decompiled method {method.name} in class {args.decompile_class}:', flush=True)
+                print(f'Decompiled method {method.name} in class {clz.name}:', flush=True)
                 decompiler.print_code(method)
                 print('', flush=True)
 
