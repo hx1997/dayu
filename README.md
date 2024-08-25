@@ -5,7 +5,7 @@ dayu (pronounced /ta˥˨ y˨˦/, loosely daa-jyu /dɑːjuː/) is a parser and (v
 
 *Dayu*, or [Yu the Great](https://en.wikipedia.org/wiki/Yu_the_Great), was an ancient Chinese king credited with successfully coping with the Great Flood and thus saving people from suffering. On a similar note, Noah's Ark helped lives survive the Deluge. In a broad sense, dayu represented/represents Ark in another form. 
 
-**Disclaimer**: dayu is a toy project developed in my free time. Decompilation correctness and future maintenance are NOT guaranteed. Use at your own risk.
+**Disclaimer**: dayu is a toy project developed in my free time. My availability and expertise are limited, so decompilation correctness and future maintenance are NOT guaranteed. Use at your own risk.
 
 ## Usage
 ### As a standalone command-line tool
@@ -70,7 +70,11 @@ decompiler.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
 ```
 
 ## Caveats
-In the final pseudocode, there may be some "pseudo-functions". They stand for operations that can't be easily translated. For example, retrieving [lexical environment](https://gitee.com/openharmony/docs/blob/master/en/application-dev/quick-start/arkts-bytecode-fundamentals.md#lexical-environment-and-lexical-variable) is represented as `__get_lexenv__`.
+As much as dayu tries to output code that conforms to the syntax of ArkTS, this isn't always possible or easy to achieve (for me). Some points to note:  
+
+First, since dayu is still limited in its control flow structure recovery, the final pseudocode may well be littered with `goto`s (in the form of `jump` statements). ArkTS (as well as TypeScript) doesn't support `goto`, so the user will have to sort most of the control flow out for themselves.
+
+Second, in the final pseudocode, there may be some "pseudo-functions". They stand for operations that can't be easily translated. For example, retrieving [lexical environment](https://gitee.com/openharmony/docs/blob/master/en/application-dev/quick-start/arkts-bytecode-fundamentals.md#lexical-environment-and-lexical-variable) is represented as `__get_lexenv__`.
 
 Some pseudo-functions can be manually implemented. For example, `__assert_defined__` may be implemented as:
 
