@@ -59,27 +59,27 @@ class InsnLifter:
 
     @staticmethod
     def add2(insn: NAddressCode, builder: IRBuilder):
-        builder.create_assign_rhs_bop(insn.args[3], PandasmInsnArgument('acc'), rhs_op='+', label=insn.label)
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='+', label=insn.label)
 
     @staticmethod
     def sub2(insn: NAddressCode, builder: IRBuilder):
-        builder.create_assign_rhs_bop(insn.args[3], PandasmInsnArgument('acc'), rhs_op='-', label=insn.label)
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='-', label=insn.label)
 
     @staticmethod
     def mul2(insn: NAddressCode, builder: IRBuilder):
-        builder.create_assign_rhs_bop(insn.args[3], PandasmInsnArgument('acc'), rhs_op='*', label=insn.label)
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='*', label=insn.label)
 
     @staticmethod
     def div2(insn: NAddressCode, builder: IRBuilder):
-        builder.create_assign_rhs_bop(insn.args[3], PandasmInsnArgument('acc'), rhs_op='/', label=insn.label)
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='/', label=insn.label)
 
     @staticmethod
     def eq(insn: NAddressCode, builder: IRBuilder):
-        builder.create_assign_rhs_bop(insn.args[3], PandasmInsnArgument('acc'), rhs_op='==', label=insn.label)
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='==', label=insn.label)
 
     @staticmethod
     def noteq(insn: NAddressCode, builder: IRBuilder):
-        builder.create_assign_rhs_bop(insn.args[3], PandasmInsnArgument('acc'), rhs_op='!=', label=insn.label)
+        builder.create_assign_rhs_bop(insn.args[2], PandasmInsnArgument('acc'), rhs_op='!=', label=insn.label)
 
     @staticmethod
     def typeof(insn: NAddressCode, builder: IRBuilder):
