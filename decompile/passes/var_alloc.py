@@ -52,7 +52,7 @@ class VariableAllocation(MethodPass):
                     self.reg2var_map[real_arg.value] = self.alloc_var()
                 real_arg.type = 'var'
                 real_arg.value = self.reg2var_map[real_arg.value]
-            elif real_arg.type.startswith('lexenv') or real_arg.type == 'cur_lexenv_level':
+            elif real_arg.type.startswith('lexenv'):
                 # add lexenv to reg2var_map so that it can be added to the forward declarations
                 if real_arg.type not in self.reg2var_map:
                     self.reg2var_map[real_arg.type] = real_arg.type
