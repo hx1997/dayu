@@ -5,7 +5,7 @@ dayu (pronounced /ta˥˨ y˨˦/, loosely daa-jyu /dɑːjuː/) is a parser and (v
 
 *Dayu*, or [Yu the Great](https://en.wikipedia.org/wiki/Yu_the_Great), was an ancient Chinese king credited with successfully coping with the Great Flood and thus saving people from suffering. On a similar note, Noah's Ark helped lives survive the Deluge. In a broad sense, dayu represented/represents Ark in another form. 
 
-**Disclaimer**: dayu is a toy project developed in my free time. My availability and expertise are limited, so decompilation correctness and future maintenance are NOT guaranteed. Use at your own risk.
+**Disclaimer**: dayu is a toy project developed in my free time. My availability and expertise are limited, so decompilation correctness and future maintenance are NOT guaranteed. Use at your own risk. This is a free and open-source project; don't expect too much from it.
 
 ## Usage
 ### As a standalone command-line tool
@@ -69,8 +69,62 @@ decompiler.print_code(method)
 decompiler.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
 ```
 
+## Example
+Suppose we have this simple snippet of code and we've compiled it into abc:
+
+```typescript
+function foobar() {
+    let i = 0
+    for (i = 0; i < 5; i++) {
+      hilog.info(0x0, 'hello', `world${i}`)
+    }
+    return i
+}
+```
+
+After decompiling using the default configuration, this is what we get (`tonumeric` is an instruction not yet supported):
+
+```typescript
+let v0 
+let v1 
+let v2 
+let v3 
+v0 = 0x0
+jump jump_label_1
+jump_label_1:
+if (v0 >= 0x5) jump jump_label_0
+v1 = __is_hole__(@ohos:hilog)
+if (v1 == true) throw 'Value of "hilog" is undefined'
+v2 = v0
+v2 = "world" + v2
+v3 = v2
+v2 = ""
+v2 = v3 + v2
+v3 = v2
+v2 = @ohos:hilog["info"]
+v2 = v2(FunctionObject, NewTarget, @ohos:hilog, 0x0, "hello", v3)
+tonumeric 0x7
+v2 = v0
+v2 = v2 + 0x1
+v0 = v2
+jump jump_label_1
+jump_label_0:
+v2 = v0
+return v2
+```
+
+Now, let's try it on a method in one of Huawei's sample ArkTS projects. This is the source code:
+
+![](docs/imgs/src_cropImage.png)
+
+Decompiled:
+
+![](docs/imgs/cfg_cropImage.png)
+
+There are more unsupported instructions and an unsupported `try-catch` structure, and the result is more tedious and harder to read now, but it's basically correct.
+
 ## Caveats
-As much as dayu tries to output code that conforms to the syntax of ArkTS, this isn't always possible or easy to achieve (for me). Some points to note:  
+As much as dayu tries to output code that conforms to the syntax of ArkTS/TypeScript, this isn't always possible or easy to achieve (for me). Some points to note:  
 
 First, since dayu is still limited in its control flow structure recovery, the final pseudocode may well be littered with `goto`s (in the form of `jump` statements). ArkTS (as well as TypeScript) doesn't support `goto`, so the user will have to sort most of the control flow out for themselves.
 
@@ -89,7 +143,7 @@ function __assert_defined__(obj) {
 ## Known Issues
 - Slow. Very slow. Largely caused by two things: Panda Assembly parsing and copy propagation, both of which are badly written.
 - Limited coverage of the instruction set
-- Loop structures are not recovered
+- Loop structures and some conditional structures are not recovered
 - No support for `try-catch` structures
 
 ## Acknowledgements
