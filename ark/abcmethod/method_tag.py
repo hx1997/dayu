@@ -1,0 +1,14 @@
+from enum import IntEnum
+
+
+class MethodTag(IntEnum):
+    NOTHING = 0
+    CODE = 1
+    SOURCE_LANG = 2
+    RUNTIME_ANNOTATION = 3
+    RUNTIME_PARAM_ANNOTATION = 4
+    DEBUG_INFO = 5
+    ANNOTATIONS = 6
+    PARAM_ANNOTATION = 7
+    TYPE_ANNOTATION = 8
+    RUNTIME_TYPE_ANNOTATION = 9
