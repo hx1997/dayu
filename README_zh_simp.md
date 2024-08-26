@@ -51,8 +51,8 @@ config = DecompilerConfig({
     'abc': abcfile,
     'pandasm': pafile,
     'output_level': DecompileOutputLevel.PSEUDOCODE,
-    'class': '<name of class containing the method to decompile>',
-    'method': '<name of method to decompile>',
+    'class': '<要反编译的方法所在类名>',
+    'method': '<要反编译的方法名>',
     'granularity': DecompileGranularity.METHOD
 })
 
