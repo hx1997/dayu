@@ -84,14 +84,16 @@ def decompile(args, abcfile, pafile):
         'view_cfg': args.view_cfg
     })
     if args.decompile_method:
+        class_name = '.'.join(args.decompile_method.split('.')[:-1])
+        method_name = args.decompile_method.split('.')[-1]
         config.set_config({
-            'class': '.'.join(args.decompile_method.split('.')[:-1]),
-            'method': args.decompile_method.split('.')[-1],
+            'class': class_name,
+            'method': method_name,
             'granularity': DecompileGranularity.METHOD
         })
         decompiler = Decompiler(config)
         method = decompiler.decompile()
-        print(f'Decompiled method {args.decompile_method} in class {args.decompile_class}:', flush=True)
+        print(f'Decompiled method {method_name} in class {class_name}:', flush=True)
         decompiler.print_code(method)
         print('', flush=True)
     elif args.decompile_class:
