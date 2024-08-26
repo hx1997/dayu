@@ -137,6 +137,9 @@ function __assert_defined__(obj) {
 } 
 ```
 
+## Documentation
+[Under the Hood - how dayu works](docs/how_it_works.md)
+
 ## Known Issues
 - Slow. Very slow. Largely caused by two things: Panda Assembly parsing and copy propagation, both of which are badly written.
 - Limited coverage of the instruction set
