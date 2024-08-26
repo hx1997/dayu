@@ -145,6 +145,7 @@ function __assert_defined__(obj) {
 - Limited coverage of the instruction set
 - Loop structures and some conditional structures are not recovered
 - No support for `try-catch` structures
+- Lack of type analysis (both ArkTS and TypeScript are typed)
 
 ## Acknowledgements
 dayu wasn't built in a day. It's the product of strenuous endeavor (plus many cups of bubble tea), and it can't go without help from others. We thank them for what they've done and continue to do:
