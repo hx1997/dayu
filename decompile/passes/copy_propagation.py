@@ -20,15 +20,15 @@ class CopyPropagation(MethodPass):
         self.replace_copies(copies, in_c)
         return in_c, out_c
 
-    def analyze_gen_kill(self, block: IRBlock, copies, stop_after_insn=None):
+    def analyze_gen_kill(self, block: IRBlock, copies, stop_on_insn=None):
         gen_block, kill_block = OrderedSet(), OrderedSet()
         def_block = OrderedSet()
 
         for insn in block.insns:
+            if stop_on_insn == insn:
+                break
             if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:
                 self.analyze_assign(insn, def_block, gen_block)
-            if stop_after_insn == insn:
-                break
 
         for copy_ in copies:
             if len(copy_.args) == 2:
@@ -52,14 +52,14 @@ class CopyPropagation(MethodPass):
 
         return gen_block, kill_block
 
-    def collect_copies(self, method: IRMethod, stop_after_insn=None):
+    def collect_copies(self, method: IRMethod, stop_on_insn=None):
         copies = OrderedSet()
         for block in method.blocks:
             for insn in block.insns:
+                if insn == stop_on_insn:
+                    break
                 if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:
                     copies.add(insn)
-                if insn == stop_after_insn:
-                    break
         return copies
 
     def analyze_assign(self, insn: NAddressCode, def_block, gen_block):
@@ -161,8 +161,8 @@ class CopyPropagation(MethodPass):
                     if copy_.args[0] in vars_use:
                         # TODO: these two statements are repeated for each copy and for each instruction in the block,
                         #  which is extremely time-consuming
-                        copies_until_this_insn = self.collect_copies(block.parent_method, stop_after_insn=insn)
-                        gen, kill = self.analyze_gen_kill(block, copies_until_this_insn, stop_after_insn=insn)
+                        copies_until_this_insn = self.collect_copies(block.parent_method, stop_on_insn=insn)
+                        gen, kill = self.analyze_gen_kill(block, copies_until_this_insn, stop_on_insn=insn)
                         if copy_ in copies_reaching_block.difference(kill).union(gen):
                             self.replace_var_use(insn, copy_)
 
