@@ -93,16 +93,13 @@ jump_label_1:
 if (v0 >= 0x5) jump jump_label_0
 v1 = __is_hole__(@ohos:hilog)
 if (v1 == true) throw 'Value of "hilog" is undefined'
-v2 = v0
-v2 = "world" + v2
+v2 = "world" + v0
 v3 = v2
-v2 = ""
-v2 = v3 + v2
+v2 = v3 + ""
 v3 = v2
 v2 = @ohos:hilog["info"](FunctionObject, NewTarget, @ohos:hilog, 0x0, "hello", v3)
 tonumeric 0x7
-v2 = v0
-v2 = v2 + 0x1
+v2 = v0 + 0x1
 v0 = v2
 jump jump_label_1
 jump_label_0:
