@@ -73,7 +73,7 @@ decompiler.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
 假设有如下源码，已编译成 [modules.12.abc](examples/modules.12.abc)：
 
 ```typescript
-function foobar() {
+function foo() {
     let i = 0
     for (i = 0; i < 5; i++) {
       hilog.info(0x0, 'hello', `world${i}`)
