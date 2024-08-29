@@ -9,6 +9,8 @@
 
 ## 用法
 ### 命令行工具
+后文“演示”一节中有使用命令行的例子。
+
 ```
 usage: main.py [-h] [-pc] [-pmc CLASS] [-dmo] [-dc DECOMPILE_CLASS] [-dme DECOMPILE_METHOD] [-cfg] [-abc ABC] [-pa PA]
                [-O OUTPUT_LEVEL]
@@ -68,7 +70,7 @@ decompiler.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
 ```
 
 ## 演示
-假设有如下源码，已编译成 abc：
+假设有如下源码，已编译成 [modules.12.abc](examples/modules.12.abc)：
 
 ```typescript
 function foobar() {
@@ -78,6 +80,26 @@ function foobar() {
     }
     return i
 }
+```
+
+先用 HarmonyOS SDK 中的 `ark_disasm` 工具反汇编得到 Panda Assembly [modules.12.abc.txt](examples/modules.12.abc.txt)：
+```shell
+ark_disasm modules.12.abc modules.12.abc.txt
+```
+
+打印 Panda Assembly 中的所有类名：
+```shell
+python main.py -pa modules.12.abc.txt -pc
+```
+
+假设要反编译的方法位于类 `com.example.myapplication.entry.ets.pages.Index` 中，打印其所有方法名：
+```shell
+python main.py -pa modules.12.abc.txt -pmc com.example.myapplication.entry.ets.pages.Index
+```
+
+可以看到 `foo` 方法的全名 `com.example.myapplication.entry.ets.pages.Index.foo`。反编译：
+```shell
+python main.py -abc modules.12.abc -pa modules.12.abc.txt -dme com.example.myapplication.entry.ets.pages.Index.foo
 ```
 
 以默认配置反编译后，结果如下（`tonumeric` 指令尚未支持）：

@@ -9,6 +9,8 @@ dayu (pronounced /ta˥˨ y˨˦/, loosely daa-jyu /dɑːjuː/) is a parser and (v
 
 ## Usage
 ### As a standalone command-line tool
+See "Examples" section below for an example use.
+
 ```
 usage: main.py [-h] [-pc] [-pmc CLASS] [-dmo] [-dc DECOMPILE_CLASS] [-dme DECOMPILE_METHOD] [-cfg] [-abc ABC] [-pa PA]
                [-O OUTPUT_LEVEL]
@@ -67,17 +69,37 @@ decompiler.print_code(method)
 decompiler.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
 ```
 
-## Example
-Suppose we have this simple snippet of code and we've compiled it into abc:
+## Examples
+Suppose we have this simple snippet of code and we've compiled it into [modules.12.abc](examples/modules.12.abc):
 
 ```typescript
-function foobar() {
+function foo() {
     let i = 0
     for (i = 0; i < 5; i++) {
       hilog.info(0x0, 'hello', `world${i}`)
     }
     return i
 }
+```
+
+Use `ark_disasm` from HarmonyOS SDK to obtain Panda Assembly [modules.12.abc.txt](examples/modules.12.abc.txt):
+```shell
+ark_disasm modules.12.abc modules.12.abc.txt
+```
+
+Print names of all classes in Panda Assembly:
+```shell
+python main.py -pa modules.12.abc.txt -pc
+```
+
+Assuming our method to decompile is in the class `com.example.myapplication.entry.ets.pages.Index`, print names of all methods in this class with:
+```shell
+python main.py -pa modules.12.abc.txt -pmc com.example.myapplication.entry.ets.pages.Index
+```
+
+We see that the full name of our `foo` method is `com.example.myapplication.entry.ets.pages.Index.foo`. Decompile with:
+```shell
+python main.py -abc modules.12.abc -pa modules.12.abc.txt -dme com.example.myapplication.entry.ets.pages.Index.foo
 ```
 
 After decompiling using the default configuration, this is what we get (`tonumeric` is an instruction not yet supported):
