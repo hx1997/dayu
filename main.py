@@ -52,14 +52,6 @@ def print_names(args, abcfile, pafile):
             print('')
 
 def decompile(args, abcfile, pafile):
-    if not abcfile:
-        print('error: decompilation requires abc file, please specify', file=sys.stderr)
-        exit(-1)
-
-    if not pafile:
-        print('error: decompilation requires Panda Assembly, please specify', file=sys.stderr)
-        exit(-1)
-
     num_decompile_args = 0
     if args.decompile_module:
         num_decompile_args += 1
@@ -70,6 +62,17 @@ def decompile(args, abcfile, pafile):
     if num_decompile_args > 1:
         print('error: please specify only one of -dmo, -dc, or -dme', file=sys.stderr)
         exit(-1)
+
+    if num_decompile_args > 0:
+        if not abcfile:
+            print('error: decompilation requires abc file, please specify', file=sys.stderr)
+            exit(-1)
+
+        if not pafile:
+            print('error: decompilation requires Panda Assembly, please specify', file=sys.stderr)
+            exit(-1)
+    else:
+        return
 
     output_level_str_to_obj = {
         'llir': DecompileOutputLevel.LOW_LEVEL_IR,
