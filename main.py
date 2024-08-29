@@ -10,7 +10,7 @@ from pandasm.reader import PandasmReader
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-pc', '--print-classes', action='store_true', help='print names of all classes')
-    parser.add_argument('-pmc', '--print-methods-in-class', metavar='CLASS', type=str, help='print names of all methods (including its class name) in the specified CLASS')
+    parser.add_argument('-pmc', '--print-methods-in-class', metavar='CLASS', type=str, help='print names of all methods (including their class names) in the specified CLASS')
     parser.add_argument('-dmo', '--decompile-module', action='store_true', help='decompile the whole file')
     parser.add_argument('-dc', '--decompile-class', type=str, help='decompile all methods in the specified class')
     parser.add_argument('-dme', '--decompile-method', type=str, help='decompile the specified method; must be specified in the format "<class name>.<method name>"')

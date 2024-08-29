@@ -19,7 +19,7 @@ options:
   -h, --help            show this help message and exit
   -pc, --print-classes  print names of all classes
   -pmc CLASS, --print-methods-in-class CLASS
-                        print names of all methods (including its class name) in the specified CLASS
+                        print names of all methods (including their class names) in the specified CLASS
   -dmo, --decompile-module
                         decompile the whole file
   -dc DECOMPILE_CLASS, --decompile-class DECOMPILE_CLASS
