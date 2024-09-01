@@ -6,7 +6,7 @@ The dayu decompiler works by first translating the bytecode into an intermediate
 ![](imgs/decompiler_workflow.png)
 
 ## Stage 1: Bytecode to Raw IR
-This stage simply parses Panda Assembly, extract bytecode instructions, and put them into dayu's internal structures (e.g., an `NAddressCode` for each instruction). Subsequent analysis and translation will be performed on these internal structures only.
+This stage simply parses Panda Assembly, extracts bytecode instructions, and puts them into dayu's internal structures (e.g., an `NAddressCode` for each instruction). Subsequent analysis and translation will be performed on these internal structures only.
 
 ## Stage 2: Raw IR to LLIR
 In this stage, we build the Control Flow Graph (CFG) based on Raw IR, and lift Raw IR to LLIR. We aim to represent the operations of the original bytecode with a restricted and standardized set of IR instructions. This unified form facilitates analysis and decompilation.
