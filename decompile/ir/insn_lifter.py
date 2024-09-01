@@ -291,7 +291,7 @@ class InsnLifter:
         get_lexenv_arg = PandasmInsnArgument('func', '__get_lexenv__')
         lexenv_arg = PandasmInsnArgument('lexenv')
         cur_lexenv_arg = PandasmInsnArgument('cur_lexenv_level', lexenv_arg)
-        builder.create_call(get_lexenv_arg, [cur_lexenv_arg, insn.args[1]], lexenv_arg, label=insn.label)
+        builder.create_call(get_lexenv_arg, [cur_lexenv_arg, insn.args[0]], lexenv_arg, label=insn.label)
         lexvar_arg = PandasmInsnArgument('field', insn.args[1], arg_ref_obj=lexenv_arg)
         builder.create_assign(PandasmInsnArgument('acc'), lexvar_arg)
 
