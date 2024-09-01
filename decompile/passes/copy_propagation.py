@@ -150,7 +150,7 @@ class CopyPropagation(MethodPass):
                         for pred in block.predecessors[1:]:
                             in_b = in_b.intersection(out_block[pred])
                     else:
-                        in_b = copies
+                        in_b = OrderedSet()
                     in_block[block] = in_b
 
                     old_out_block = out_block.copy()
