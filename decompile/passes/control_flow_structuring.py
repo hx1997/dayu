@@ -1,7 +1,5 @@
 import collections
-import random
 import typing
-from enum import IntEnum, auto
 
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.builder import IRBuilder
@@ -9,18 +7,6 @@ from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCode, NAddressCodeType
 from decompile.method_pass import MethodPass
 from pandasm.insn import PandasmInsnArgument
-
-
-class RegionType(IntEnum):
-    Block = auto()
-    IfThen = auto()
-    IfThenElse = auto()
-    Case = auto()
-    Proper = auto()
-    SelfLoop = auto()
-    WhileLoop = auto()
-    NaturalLoop = auto()
-    Improper = auto()
 
 
 class ControlFlowStructuring(MethodPass):

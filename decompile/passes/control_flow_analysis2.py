@@ -1,5 +1,20 @@
+import random
+
+from decompile.ir.basicblock import IRBlock
 from decompile.ir.method import IRMethod
 from decompile.method_pass import MethodPass
+from enum import IntEnum, auto
+
+class RegionType(IntEnum):
+    Block = auto()
+    IfThen = auto()
+    IfThenElse = auto()
+    Case = auto()
+    Proper = auto()
+    SelfLoop = auto()
+    WhileLoop = auto()
+    NaturalLoop = auto()
+    Improper = auto()
 
 
 class ControlFlowAnalysis2(MethodPass):
