@@ -14,6 +14,7 @@ from decompile.passes.print_pcode import PrintPcode
 from decompile.passes.live_variable import LiveVariableAnalysis
 from decompile.passes.peephole_opt import PeepholeOptimization
 from decompile.passes.rawir2llir import RawIR2LLIR
+from decompile.passes.reaching_def import ReachingDefinitions
 from decompile.passes.var_alloc import VariableAllocation
 from decompile.passes.viewcfg import ViewCFG
 
@@ -145,9 +146,9 @@ class Decompiler:
             if self.config.max_no_mlir_passes_iterations == 0:
                 break
             is_first = False
-            # in_r, out_r = ReachingDefinitions().run_on_method(method)
+            in_r, out_r = ReachingDefinitions().run_on_method(method)
             if DecompileOutputLevel.MEDIUM_LEVEL_IR in self.config.copy_propagation_enabled_levels:
-                CopyPropagation(constrained=True).run_on_method(method)
+                CopyPropagation(in_r, constrained=True).run_on_method(method)
 
             DefUseAnalysis().run_on_method(method)
             in_l, out_l = LiveVariableAnalysis().run_on_method(method)
@@ -176,9 +177,9 @@ class Decompiler:
 
     def mlir_to_hlir(self, method: IRMethod):
         # convert to high-level IR
-        # in_r, out_r = ReachingDefinitions().run_on_method(method)
+        in_r, out_r = ReachingDefinitions().run_on_method(method)
         if DecompileOutputLevel.HIGH_LEVEL_IR in self.config.copy_propagation_enabled_levels:
-            CopyPropagation(constrained=False).run_on_method(method)
+            CopyPropagation(in_r, constrained=False).run_on_method(method)
 
         DefUseAnalysis().run_on_method(method)
         in_l, out_l = LiveVariableAnalysis().run_on_method(method)

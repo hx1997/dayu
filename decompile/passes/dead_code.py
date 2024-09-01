@@ -1,4 +1,5 @@
 from decompile.ir.basicblock import IRBlock
+from decompile.ir.expr import ExprArg
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType, NAddressCode
 from decompile.method_pass import MethodPass
@@ -38,8 +39,6 @@ class DeadCodeElimination(MethodPass):
                 live_vars = self.update_live_vars_for_return(insn, live_vars)
             elif insn.type == NAddressCodeType.CALL:
                 live_vars = self.update_live_vars_for_call(insn, live_vars)
-            elif insn.type == NAddressCodeType.UNKNOWN:
-                live_vars = self.update_live_vars_for_unknown(insn, live_vars)
             if insn == stop_after_insn:
                 break
 
@@ -65,17 +64,21 @@ class DeadCodeElimination(MethodPass):
             insn.erase_from_parent()
 
     def update_live_vars_for_assign(self, insn: NAddressCode, live_vars: set):
-        var_def = {insn.args[0]}
+        vars_def = {insn.args[0]}
         vars_use = {insn.args[1]}
         if insn.args[0].ref_obj:
             vars_use.add(insn.args[0].ref_obj)
         if insn.args[1].ref_obj:
             vars_use.add(insn.args[1].ref_obj)
+        # for nested ExprArg
+        for arg in insn.args[1:]:
+            if isinstance(arg, ExprArg):
+                vars_use.update(arg.get_used_args())
         if len(insn.args) == 3:
             vars_use.add(insn.args[2])
             if insn.args[2].ref_obj:
                 vars_use.add(insn.args[2].ref_obj)
-        live_vars = live_vars.difference(var_def).union(vars_use)
+        live_vars = live_vars.difference(vars_def).union(vars_use)
         return live_vars
 
     def update_live_vars_for_uncond_jump_throw(self, insn: NAddressCode, live_vars: set):
@@ -116,30 +119,11 @@ class DeadCodeElimination(MethodPass):
 
         for arg in insn.args[1:]:
             vars_use.add(arg)
+            # for nested ExprArg
+            if isinstance(arg, ExprArg):
+                vars_use.update(arg.get_used_args())
             if arg.ref_obj:
                 vars_use.add(arg.ref_obj)
 
         live_vars = live_vars.difference(var_def).union(vars_use)
-        return live_vars
-
-    def update_live_vars_for_unknown(self, insn: NAddressCode, live_vars: set):
-        """
-        for UNKNOWN NACs, since we don't know what this NAC does, we must assume the worst scenario:
-        all operands involved are defined, but no operand is used (i.e. all killed without regeneration)
-        """
-        vars_def = set()
-        for operand in insn.args:
-            # some heuristics to infer what type this operand is
-            if operand == 'acc':
-                acc = PandasmInsnArgument('acc')
-                vars_def.add(acc)
-            elif operand.startswith('a') or operand.startswith('v'):
-                reg = PandasmInsnArgument('reg', operand)
-                vars_def.add(reg)
-            elif operand.startswith('0x') or operand.startswith('"') or operand.startswith(
-                    'jump_label') or operand.startswith('com.'):
-                # immediates, strings, jump labels and functions are constants, so these are not targets of our analysis
-                pass
-
-        live_vars = live_vars.difference(vars_def)
         return live_vars

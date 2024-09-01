@@ -162,7 +162,7 @@ class PeepholeOptimization(MethodPass):
                 continue
             if insn.args[0] == block_insns_copy[idx - 1].args[0]:
                 if insn.op in ['==', '!='] and insn.args[1].type == 'zero' and block_insns_copy[idx - 1].is_relational_operation():
-                    if insn.op == '==' and not block_insns_copy[idx - 1].reverse_relational_operation():
+                    if insn.op == '==' and not block_insns_copy[idx - 1].invert_relational_operation():
                         continue
                     insn.args[0] = block_insns_copy[idx - 1].args[1]
                     insn.op = block_insns_copy[idx - 1].op

@@ -26,36 +26,42 @@ class VariableAllocation(MethodPass):
             real_arg = arg
             while real_arg.ref_obj:
                 real_arg = real_arg.ref_obj
-            if real_arg.type == 'acc':
-                if 'acc' not in self.reg2var_map:
-                    self.reg2var_map['acc'] = self.alloc_var()
-                real_arg.type = 'var'
-                real_arg.value = self.reg2var_map['acc']
-            elif real_arg.type == 'reg':
-                if real_arg.value[0] != 'a':
-                    if real_arg.value not in self.reg2var_map:
-                        self.reg2var_map[real_arg.value] = self.alloc_var()
-                    real_arg.type = 'var'
-                    real_arg.value = self.reg2var_map[real_arg.value]
-                else:
-                    if real_arg.value == 'a0':
-                        real_arg.type = 'var'
-                        real_arg.value = 'FunctionObject'
-                    elif real_arg.value == 'a1':
-                        real_arg.type = 'var'
-                        real_arg.value = 'NewTarget'
-                    elif real_arg.value == 'a2':
-                        real_arg.type = 'var'
-                        real_arg.value = 'this'
-            elif real_arg.type == 'tmp':
+            self.process_arg(real_arg)
+
+    def process_arg(self, real_arg):
+        if real_arg.type == 'acc':
+            if 'acc' not in self.reg2var_map:
+                self.reg2var_map['acc'] = self.alloc_var()
+            real_arg.type = 'var'
+            real_arg.value = self.reg2var_map['acc']
+        elif real_arg.type == 'reg':
+            if real_arg.value[0] != 'a':
                 if real_arg.value not in self.reg2var_map:
                     self.reg2var_map[real_arg.value] = self.alloc_var()
                 real_arg.type = 'var'
                 real_arg.value = self.reg2var_map[real_arg.value]
-            elif real_arg.type.startswith('lexenv'):
-                # add lexenv to reg2var_map so that it can be added to the forward declarations
-                if real_arg.type not in self.reg2var_map:
-                    self.reg2var_map[real_arg.type] = real_arg.type
+            else:
+                if real_arg.value == 'a0':
+                    real_arg.type = 'var'
+                    real_arg.value = 'FunctionObject'
+                elif real_arg.value == 'a1':
+                    real_arg.type = 'var'
+                    real_arg.value = 'NewTarget'
+                elif real_arg.value == 'a2':
+                    real_arg.type = 'var'
+                    real_arg.value = 'this'
+        elif real_arg.type == 'tmp':
+            if real_arg.value not in self.reg2var_map:
+                self.reg2var_map[real_arg.value] = self.alloc_var()
+            real_arg.type = 'var'
+            real_arg.value = self.reg2var_map[real_arg.value]
+        elif real_arg.type == 'expr':
+            for expr_arg in real_arg.value:
+                self.process_arg(expr_arg)
+        elif real_arg.type.startswith('lexenv'):
+            # add lexenv to reg2var_map so that it can be added to the forward declarations
+            if real_arg.type not in self.reg2var_map:
+                self.reg2var_map[real_arg.type] = real_arg.type
 
     def alloc_var(self):
         self.cur_var_no += 1
@@ -63,6 +69,7 @@ class VariableAllocation(MethodPass):
 
     def add_declarations(self, method: IRMethod):
         entry_block = method.blocks[0]
-        for var in list(self.reg2var_map.values())[::-1]:
-            declare_insn = NAddressCode(f'let {var}', [], nac_type=NAddressCodeType.UNKNOWN)
-            entry_block.insert_insn(declare_insn, 0)
+        decl_vars = list(self.reg2var_map.values())
+        decl_stmt = f'let {", ".join(decl_vars)}'
+        declare_insn = NAddressCode(decl_stmt, [], nac_type=NAddressCodeType.UNKNOWN)
+        entry_block.insert_insn(declare_insn, 0)

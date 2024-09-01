@@ -1,4 +1,5 @@
 from decompile.ir.basicblock import IRBlock
+from decompile.ir.expr import ExprArg
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType, NAddressCode
 from decompile.method_pass import MethodPass
@@ -14,24 +15,31 @@ class ReachingDefinitions(MethodPass):
         return self.reaching_definitions(method, gen, kill)
 
     @classmethod
-    def analyze_gen_kill(cls, block: IRBlock, copies, stop_after_insn=None):
+    def analyze_gen_kill(cls, block: IRBlock, copies, stop_on_insn=None):
         gen_block, kill_block = set(), set()
         def_block = set()
 
         for insn in block.insns:
+            if stop_on_insn == insn:
+                break
             if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:
                 cls.analyze_assign(insn, def_block, gen_block)
-            elif insn.type == NAddressCodeType.UNKNOWN:
-                cls.analyze_unknown(insn, def_block)
-            if stop_after_insn == insn:
-                break
 
         for copy_ in copies:
             # each `copy` is a tuple (block_hash, arg1 (lhs), arg2 (rhs)) and possibly
             # with additional elements operator and argn (remaining arguments on rhs)
             for definition in def_block:
-                if definition[1].__hash__() != copy_[1].__hash__() and definition[2] == copy_[2]:
+                if definition != copy_ and definition.args[0] == copy_.args[0]:
                     # if for this copy, say x=y, x is redefined in this block, then add it to kill set
+                    kill_block.add(copy_)
+
+            # there could be nested ExprArgs on rhs, take any arguments in ExprArg into account
+            for definition in def_block:
+                vars_used_in_copy = []
+                for arg in copy_.args[1:]:
+                    if isinstance(arg, ExprArg):
+                        vars_used_in_copy.extend(arg.get_used_args())
+                if definition.args[0] in vars_used_in_copy:
                     kill_block.add(copy_)
 
         return gen_block, kill_block
@@ -42,66 +50,47 @@ class ReachingDefinitions(MethodPass):
         for block in method.blocks:
             for insn in block.insns:
                 if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:
-                    if len(insn.args) == 2:
-                        copies.add((block, insn, insn.args[0], insn.args[1]))
-                    elif len(insn.args) >= 3:
-                        copies.add((block, insn, insn.args[0], insn.args[1], insn.op, *insn.args[2:]))
+                    copies.add(insn)
         return copies
 
     @classmethod
     def analyze_assign(cls, insn: NAddressCode, def_block, gen_block):
-        def_block.add((insn.parent_block, insn, insn.args[0], insn.args[1]))
+        def_block.add(insn)
 
         # gen is the set of definitions (x=y) defined in this block without x or y being subsequently redefined in it
         # first add to the set this assign instruction
-        this_insn = None
         if len(insn.args) == 2:
-            this_insn = (insn.parent_block, insn, insn.args[0], insn.args[1])
-            gen_block.add(this_insn)
+            gen_block.add(insn)
         elif len(insn.args) >= 3:
             # for the three-argument ASSIGN case x=y+z and the CALL case x = y(z1,z2,...)
-            this_insn = (insn.parent_block, insn, insn.args[0], insn.args[1], insn.op, *insn.args[2:])
-            gen_block.add(this_insn)
+            gen_block.add(insn)
 
         # then, remove a previous definition from the gen set if its left-hand side is redefined
         gen_block_copy = gen_block.copy()
         for definition in gen_block_copy:
             try:
                 # don't remove what we've just added
-                if definition == this_insn:
+                if definition == insn:
                     continue
-                if definition[2] == insn.args[0]:
+                if definition.args[0] == insn.args[0]:
                     gen_block.remove(definition)
                     continue
-                if definition[2].ref_obj and definition[2].ref_obj == insn.args[0]:
+                if definition.args[0].ref_obj and definition.args[0].ref_obj == insn.args[0]:
                     gen_block.remove(definition)
                     continue
                 # for definitions like reg:v2 = {}, a subsequent reg:v2["abc"] = acc should cause the removal of reg:v2
-                if insn.args[0].ref_obj and insn.args[0].ref_obj == definition[2]:
+                if insn.args[0].ref_obj and insn.args[0].ref_obj == definition.args[0]:
+                    gen_block.remove(definition)
+                    continue
+                # for nested ExprArg
+                vars_used_in_expr = []
+                for arg in definition.args[1:]:
+                    if isinstance(arg, ExprArg):
+                        vars_used_in_expr.extend(arg.get_used_args())
+                if insn.args[0] in vars_used_in_expr:
                     gen_block.remove(definition)
                     continue
             except KeyError:
-                pass
-
-    @classmethod
-    def analyze_unknown(cls, insn: NAddressCode, def_block):
-        """
-        for UNKNOWN NACs, since we don't know what this NAC does, we must assume the worst scenario:
-        all operands involved are defined and used, but no operand is generated (i.e. all killed without regeneration)
-        """
-        for operand in insn.args:
-            # some heuristics to infer what type this operand is
-            if operand == 'acc':
-                acc = PandasmInsnArgument('acc')
-                this_insn = (insn.parent_block, insn, acc)
-                def_block.add(this_insn)
-            elif operand.startswith('a') or operand.startswith('v'):
-                reg = PandasmInsnArgument('reg', operand)
-                this_insn = (insn.parent_block, insn, reg)
-                def_block.add(this_insn)
-            elif operand.startswith('0x') or operand.startswith('"') or operand.startswith(
-                    'jump_label') or operand.startswith('com.'):
-                # immediates, strings, jump labels and functions are constants, so these are not targets of our analysis
                 pass
 
     def reaching_definitions(self, method: IRMethod, gen, kill):

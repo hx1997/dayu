@@ -1,4 +1,5 @@
 from decompile.ir.basicblock import IRBlock
+from decompile.ir.expr import ExprArg
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType, NAddressCode
 from decompile.method_pass import MethodPass
@@ -41,6 +42,17 @@ class DefUseAnalysis(MethodPass):
             used1 = True
         if insn.args[1].ref_obj and insn.args[1].ref_obj not in defs:
             ref_obj_used2 = True
+
+        # for nested ExprArg
+        vars_used_in_expr = []
+        for arg in insn.args[1:]:
+            if isinstance(arg, ExprArg):
+                vars_used_in_expr.extend(arg.get_used_args())
+        vars_used_in_expr_is_undefined = set()
+        for var in vars_used_in_expr:
+            if var not in defs:
+                vars_used_in_expr_is_undefined.add(var)
+
         if len(insn.args) == 3:
             # x = y bop z, we need to add z
             if insn.args[2] not in defs:
@@ -59,6 +71,9 @@ class DefUseAnalysis(MethodPass):
             uses.add(insn.args[1].ref_obj)
         if ref_obj_used3:
             uses.add(insn.args[2].ref_obj)
+        for var in vars_used_in_expr:
+            if var in vars_used_in_expr_is_undefined:
+                uses.add(var)
 
     def analyze_uncond_jump_throw(self, insn: NAddressCode, defs, uses):
         used, ref_obj_used = False, False
@@ -121,6 +136,16 @@ class DefUseAnalysis(MethodPass):
         if insn.args[0].ref_obj and insn.args[0].ref_obj not in defs:
             ref_obj_used1 = True
 
+        # for nested ExprArg
+        vars_used_in_expr = []
+        for arg in insn.args[1:]:
+            if isinstance(arg, ExprArg):
+                vars_used_in_expr.extend(arg.get_used_args())
+        vars_used_in_expr_is_undefined = set()
+        for var in vars_used_in_expr:
+            if var not in defs:
+                vars_used_in_expr_is_undefined.add(var)
+
         for idx, arg in enumerate(insn.args[1:]):
             if arg not in defs:
                 used[idx] = True
@@ -136,6 +161,9 @@ class DefUseAnalysis(MethodPass):
                 uses.add(arg)
             if ref_obj_used_remaining[idx]:
                 uses.add(arg.ref_obj)
+        for var in vars_used_in_expr:
+            if var in vars_used_in_expr_is_undefined:
+                uses.add(var)
 
     def analyze_unknown(self, insn: NAddressCode, defs, uses):
         """

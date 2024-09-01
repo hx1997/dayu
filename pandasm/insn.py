@@ -66,7 +66,7 @@ class PandasmInsnArgument:
         :param arg_type: can be one of:
           'acc', 'undefined', 'null', 'true', 'false', 'zero', 'FunctionObject', 'NewTarget',
           'cur_lexenv_level, 'lexenv_xxx', 'lexenv', 'field', 'array', 'reg', 'str', 'imm', 'arr', 'module',
-          'litarr', 'func', 'tmp', 'object', 'hole'
+          'litarr', 'func', 'tmp', 'object', 'hole', 'expr'
 
         :param arg_value:
         :param arg_ref_obj:
