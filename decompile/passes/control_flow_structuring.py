@@ -231,7 +231,7 @@ class ControlFlowStructuring(MethodPass):
         if cond_jump_target == follow_node:
             # type 1: if (!condition) { [non follow node] } [follow node]
             # negate the condition if it's type 1
-            if not cond_jump_insn.reverse_relational_operation():
+            if not cond_jump_insn.invert_relational_operation():
                 return
         else:
             # type 2: if (condition) { [non follow node] } [follow node]

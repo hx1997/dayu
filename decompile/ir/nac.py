@@ -116,11 +116,11 @@ class NAddressCode:
     def is_relational_operation(self):
         return self.type in [NAddressCodeType.ASSIGN, NAddressCodeType.COND_JUMP, NAddressCodeType.COND_THROW] and self.op in self.relational_op
 
-    def reverse_relational_operation(self):
+    def invert_relational_operation(self):
         assert self.is_relational_operation()
-        reverse = self.relational_op[self.op]
-        if reverse != '':
-            self.op = reverse
+        inverted = self.relational_op[self.op]
+        if inverted != '':
+            self.op = inverted
             return True
         else:
             return False
