@@ -74,7 +74,7 @@ class PeepholeOptimization(MethodPass):
                 # the second instruction, so analyze liveness here
                 if idx + 1 < len(block_insns_copy):
                     live_vars = DeadCodeElimination(self.out_l).analyze_block(block, False, block_insns_copy[idx + 1])
-                    if insn.args[1] in live_vars or insn.args[1].ref_obj in live_vars:
+                    if block_insns_copy[idx - 1].args[0] in live_vars or block_insns_copy[idx - 1].args[0].ref_obj in live_vars:
                         continue
                 # case 3: collapse "a = b; c = a" into "c = b"
                 # take extra care that the two instructions don't both have an operator on the rhs
