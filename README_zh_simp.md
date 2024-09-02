@@ -113,8 +113,8 @@ if (v0 >= 0x5) jump jump_label_0
 v1 = __is_hole__(@ohos:hilog)
 if (v1 == true) throw 'Value of "hilog" is undefined'
 v2 = @ohos:hilog["info"](FunctionObject, NewTarget, @ohos:hilog, 0x0, "hello", (("world" + v0) + ""))
-tonumeric 0x7
-v0 = (v0 + 0x1)
+v2 = __ToNumeric__(v0)
+v0 = (v2 + 0x1)
 jump jump_label_1
 jump_label_0:
 v2 = v0
