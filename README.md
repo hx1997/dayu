@@ -102,7 +102,7 @@ We see that the full name of our `foo` method is `com.example.myapplication.entr
 python main.py -abc modules.12.abc -pa modules.12.abc.txt -dme com.example.myapplication.entry.ets.pages.Index.foo
 ```
 
-After decompiling using the default configuration, this is what we get (`tonumeric` is an instruction not yet supported):
+After decompiling using the default configuration, this is what we get:
 
 ```typescript
 let v0, v1, v2 

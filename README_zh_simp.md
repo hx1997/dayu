@@ -102,7 +102,7 @@ python main.py -pa modules.12.abc.txt -pmc com.example.myapplication.entry.ets.p
 python main.py -abc modules.12.abc -pa modules.12.abc.txt -dme com.example.myapplication.entry.ets.pages.Index.foo
 ```
 
-以默认配置反编译后，结果如下（`tonumeric` 指令尚未支持）：
+以默认配置反编译后，结果如下：
 
 ```typescript
 let v0, v1, v2 
