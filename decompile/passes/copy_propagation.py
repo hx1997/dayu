@@ -267,6 +267,9 @@ class CopyPropagation(MethodPass):
             # reference object could be accessible outside this method, replacing could render a store to it
             # dead code and wrongly eliminated, see analyze_assign() in DeadCodeElimination for example
             return False
+        if replace_with[0].type == 'object':
+            # objects are typically new()ed and shouldn't be propagated, or else there'll be multiple new objects
+            return False
         if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL, NAddressCodeType.COND_JUMP, NAddressCodeType.COND_THROW]:
             for idx, arg in enumerate(insn.args):
                 if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL] and idx == 0 and var_to_replace == insn.args[0]:

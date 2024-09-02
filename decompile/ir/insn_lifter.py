@@ -30,6 +30,48 @@ class InsnLifter:
         builder.create_assign(PandasmInsnArgument('object', {}), label=insn.label)
 
     @staticmethod
+    def createobjectwithbuffer(insn: NAddressCode, builder: IRBuilder):
+        obj = insn.args[2].value  # createobjectwithbuffer 0x37, { 4 [ string:"height", null_value:0, string:"width", null_value:0, ]}
+        obj = obj.split('[')[1].split(']')[0].strip()  # string:"height", null_value:0, string:"width", null_value:0,
+        # `obj` is an array of alternating keys and values, keep a variable so we know we're dealing with a key or a value as we go
+        key_or_value = 'key'
+        is_inside_quotes, is_after_comma = False, False
+        cur_str = ''
+        keys, values = [], []
+        for ch in obj:
+            if ch == '"':
+                is_inside_quotes = not is_inside_quotes
+            elif ch == ',':
+                if not is_inside_quotes:
+                    if key_or_value == 'key':
+                        key_or_value = 'value'
+                        keys.append(cur_str)
+                    elif key_or_value == 'value':
+                        key_or_value = 'key'
+                        values.append(cur_str)
+                    cur_str = ''
+                    is_after_comma = True
+                else:
+                    cur_str += ch
+            elif ch == ' ':
+                if is_after_comma:
+                    is_after_comma = False
+                else:
+                    cur_str += ch
+            else:
+                cur_str += ch
+
+        # strip the type tag: {"height":0, "width":0}
+        keys = [':'.join(k.split(':')[1:]) for k in keys]
+        values = [':'.join(v.split(':')[1:]) for v in values]
+
+        obj_dict = {k: v for k, v in zip(keys, values)}
+        # # ordinary assignments will be copy-propagated; use a call to avoid that
+        # new_obj_func = PandasmInsnArgument('func', '__new_object__')
+        # builder.create_call(new_obj_func, [PandasmInsnArgument('object', obj_dict)], label=insn.label)
+        builder.create_assign(PandasmInsnArgument('object', obj_dict), label=insn.label)
+
+    @staticmethod
     def newobjrange(insn: NAddressCode, builder: IRBuilder):
         obj = insn.args[3]
         num_args = int(insn.args[2].value, 16) - 1
@@ -132,6 +174,14 @@ class InsnLifter:
     @staticmethod
     def typeof(insn: NAddressCode, builder: IRBuilder):
         builder.create_assign_rhs_uop(PandasmInsnArgument('acc'), rhs_op='typeof', label=insn.label)
+
+    @staticmethod
+    def tonumber(insn: NAddressCode, builder: IRBuilder):
+        builder.create_call(PandasmInsnArgument('func', '__ToNumber__'), [PandasmInsnArgument('acc')], label=insn.label)
+
+    @staticmethod
+    def tonumeric(insn: NAddressCode, builder: IRBuilder):
+        builder.create_call(PandasmInsnArgument('func', '__ToNumeric__'), [PandasmInsnArgument('acc')], label=insn.label)
 
     @staticmethod
     def neg(insn: NAddressCode, builder: IRBuilder):
@@ -376,6 +426,10 @@ class InsnLifter:
         builder.create_assign(PandasmInsnArgument('module', external_module_name), label=insn.label)
 
     @staticmethod
+    def asyncfunctionenter(insn: NAddressCode, builder: IRBuilder):
+        builder.create_call(PandasmInsnArgument('func', 'AsyncFunction'), [], label=insn.label)
+
+    @staticmethod
     def newlexenvwithname(insn: NAddressCode, builder: IRBuilder):
         array_arg = PandasmInsnArgument('litarr',
                                         insn.args[2])
@@ -392,6 +446,44 @@ class InsnLifter:
         # and finally use a pseudo-function __get_lexenv_level__ to fetch the level and assign it to 'cur_lexenv_level'
         get_lexenv_level_arg = PandasmInsnArgument('func', '__get_lexenv_level__')
         builder.create_call(get_lexenv_level_arg, [lexenv_arg], cur_lexenv_arg)
+
+    @staticmethod
+    def resumegenerator(insn: NAddressCode, builder: IRBuilder):
+        generator_func = PandasmInsnArgument('acc')
+        builder.create_call(PandasmInsnArgument('func', '__GeneratorResume__'), [generator_func], label=insn.label)
+
+    @staticmethod
+    def getresumemode(insn: NAddressCode, builder: IRBuilder):
+        generator_func = PandasmInsnArgument('acc')
+        builder.create_call(PandasmInsnArgument('func', '__get_resume_mode__'), [generator_func], label=insn.label)
+
+    @staticmethod
+    def suspendgenerator(insn: NAddressCode, builder: IRBuilder):
+        value = PandasmInsnArgument('acc')
+        generator_func = insn.args[1]
+        builder.create_call(PandasmInsnArgument('func', '__GeneratorSuspend__'), [value, generator_func], label=insn.label)
+
+    @staticmethod
+    def asyncfunctionawaituncaught(insn: NAddressCode, builder: IRBuilder):
+        await_expr = PandasmInsnArgument('acc')
+        async_func = insn.args[1]
+        builder.create_call(PandasmInsnArgument('func', '__await__'), [async_func, await_expr], label=insn.label)
+
+    @staticmethod
+    def asyncfunctionresolve(insn: NAddressCode, builder: IRBuilder):
+        resolve_func = PandasmInsnArgument('field', '"resolve"')
+        promise = PandasmInsnArgument('module', 'Promise')
+        resolve_func.set_ref_obj(promise)
+        resolve_value = PandasmInsnArgument('acc')
+        builder.create_call(resolve_func, [resolve_value], label=insn.label)
+
+    @staticmethod
+    def asyncfunctionreject(insn: NAddressCode, builder: IRBuilder):
+        resolve_func = PandasmInsnArgument('field', '"reject"')
+        promise = PandasmInsnArgument('module', 'Promise')
+        resolve_func.set_ref_obj(promise)
+        resolve_value = PandasmInsnArgument('acc')
+        builder.create_call(resolve_func, [resolve_value], label=insn.label)
 
     @staticmethod
     def definefieldbyname(insn: NAddressCode, builder: IRBuilder):

@@ -34,6 +34,13 @@
     "read": [],
     "write": [0]
   },
+  "createobjectwithbuffer": {
+    "opcode": ["0x7", "0x82"],
+    "num_args": 3,
+    "arg_types": ["acc", "imm", "litarr"],
+    "read": [],
+    "write": [0]
+  },
   "newobjrange": {
     "opcode": ["0x8", "0x83"],
     "num_args": 4,
@@ -176,6 +183,20 @@
   },
   "typeof": {
     "opcode": ["0x1c", "0x84"],
+    "num_args": 3,
+    "arg_types": ["acc", "acc", "imm"],
+    "read": [1],
+    "write": [0]
+  },
+  "tonumber": {
+    "opcode": ["0x1d"],
+    "num_args": 3,
+    "arg_types": ["acc", "acc", "imm"],
+    "read": [1],
+    "write": [0]
+  },
+  "tonumeric": {
+    "opcode": ["0x1e"],
     "num_args": 3,
     "arg_types": ["acc", "acc", "imm"],
     "read": [1],
@@ -475,11 +496,60 @@
     "read": [],
     "write": [0]
   },
+  "asyncfunctionenter": {
+    "opcode": ["0xae"],
+    "num_args": 1,
+    "arg_types": ["acc"],
+    "read": [],
+    "write": [0]
+  },
   "newlexenvwithname": {
     "opcode": ["0xb6"],
     "num_args": 3,
     "arg_types": ["acc", "imm", "litarr"],
     "read": [],
+    "write": [0]
+  },
+  "resumegenerator": {
+    "opcode": ["0xbf"],
+    "num_args": 2,
+    "arg_types": ["acc", "acc"],
+    "read": [1],
+    "write": [0]
+  },
+  "getresumemode": {
+    "opcode": ["0xc0"],
+    "num_args": 2,
+    "arg_types": ["acc", "acc"],
+    "read": [1],
+    "write": [0]
+  },
+  "suspendgenerator": {
+    "opcode": ["0xc3"],
+    "num_args": 3,
+    "arg_types": ["acc", "reg", "acc"],
+    "read": [1, 2],
+    "write": [0]
+  },
+  "asyncfunctionawaituncaught": {
+    "opcode": ["0xc4"],
+    "num_args": 3,
+    "arg_types": ["acc", "reg", "acc"],
+    "read": [1, 2],
+    "write": [0]
+  },
+  "asyncfunctionresolve": {
+    "opcode": ["0xcd"],
+    "num_args": 3,
+    "arg_types": ["acc", "reg", "acc"],
+    "read": [1, 2],
+    "write": [0]
+  },
+  "asyncfunctionreject": {
+    "opcode": ["0xce"],
+    "num_args": 3,
+    "arg_types": ["acc", "reg", "acc"],
+    "read": [1, 2],
     "write": [0]
   },
   "definefieldbyname": {
