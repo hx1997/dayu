@@ -129,7 +129,7 @@ Decompiled:
 
 ![](docs/imgs/cfg_cropImage.png)
 
-There are more unsupported instructions and an unsupported `try-catch` structure, and the result is more tedious and harder to read now, but it's basically correct.
+There's an unsupported `try-catch` structure, and the result is more tedious and harder to read now, but it's basically correct.
 
 ## Caveats
 As much as dayu tries to output code that conforms to the syntax of ArkTS/TypeScript, this isn't always possible or easy to achieve (for me). Some points to note:  
