@@ -1,7 +1,7 @@
 [简体中文](README_zh_simp.md) | **English**
 
 # dayu
-dayu (pronounced /ta˥˨ y˨˦/, loosely daa-jyu /dɑːjuː/) is a parser and (very rudimentary) decompiler for the .abc files (Ark Bytecode files) used on Open/HarmonyOS.
+dayu (pronounced /ta˥˨ y˨˩˨/, loosely daa-jyu /dɑːjuː/) is a parser and (very rudimentary) decompiler for the .abc files (Ark Bytecode files) used on Open/HarmonyOS.
 
 *Dayu*, or [Yu the Great](https://en.wikipedia.org/wiki/Yu_the_Great), was an ancient Chinese king credited with successfully coping with the Great Flood and thus saving people from suffering. On a similar note, Noah's Ark helped lives survive the Deluge. In a broad sense, dayu represented/represents Ark in another form. 
 
