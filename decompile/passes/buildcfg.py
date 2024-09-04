@@ -35,12 +35,12 @@ class BuildCFG(MethodPass):
         # blocks ending in a return instruction shouldn't have successors;
         # additionally, blocks ending in an unconditional jump shouldn't have the next instruction as a successor
         # (if the jump target isn't the next instruction), so cut those edges
+        # FIXME: we clear all successors of unconditional throws too, since we don't analyze try-catch structures
+        #  for now; the right way to do this should be connect an unconditional throw block to its handler
         for block in method.blocks:
-            if self.is_return_insn(block.insns[-1].op):
+            if self.is_return_insn(block.insns[-1].op) or self.is_uncond_throw_insn(block.insns[-1].op):
                 for succ in block.successors:
                     succ.remove_predecessor(block)
-                    # if block in succ.predecessors:
-                    #     succ.predecessors.remove(block)
                 block.clear_successors()
             if self.is_branch_insn(block.insns[-1].op) == 'uncond':
                 target_insn = method.get_insn_by_label(block.insns[-1].args[0])
@@ -50,12 +50,9 @@ class BuildCFG(MethodPass):
                     if succ.insns[0] != target_insn:
                         found = True
                         succ.remove_predecessor(block)
-                        # if block in succ.predecessors:
-                        #     succ.predecessors.remove(block)
                         break
                 if found and succ:
                     block.remove_successor(succ)
-                    # block.successors.remove(succ)
 
         return method
 
@@ -71,3 +68,6 @@ class BuildCFG(MethodPass):
 
     def is_return_insn(self, op):
         return op.startswith('return')
+
+    def is_uncond_throw_insn(self, op):
+        return op.startswith('throw')

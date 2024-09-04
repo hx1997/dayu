@@ -72,7 +72,8 @@ class ControlFlowStructuring(MethodPass):
         pass
 
     def insert_jump_at_block_end(self, block: IRBlock):
-        if block.insns[-1].type not in [NAddressCodeType.UNCOND_JUMP, NAddressCodeType.COND_JUMP, NAddressCodeType.RETURN]:
+        if block.insns[-1].type not in [NAddressCodeType.UNCOND_JUMP, NAddressCodeType.COND_JUMP,
+                                        NAddressCodeType.RETURN, NAddressCodeType.UNCOND_THROW, NAddressCodeType.COND_THROW]:
             if len(block.successors) == 1:
                 builder = IRBuilder(block.parent_method.parent_class.parent_module)
                 builder.set_insert_point(block)

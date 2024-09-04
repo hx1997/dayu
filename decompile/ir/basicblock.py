@@ -1,6 +1,6 @@
 import typing
 
-from decompile.ir.nac import NAddressCode
+from decompile.ir.nac import NAddressCode, NAddressCodeType
 from pandasm.insn import PandasmInsnArgument
 
 
@@ -39,10 +39,6 @@ class IRBlock:
         """
         at = self.insns.index(insn)
         self.remove_insn_at(at)
-        # del self.insns[at]
-        # if insn.label:
-        #     del self.label2insn_map[insn.label]
-        # return at
 
     def clear_insns(self):
         self.insns.clear()
@@ -58,6 +54,13 @@ class IRBlock:
             label = self.insns[at].label
             if label:
                 del self.label2insn_map[label]
+
+        # if the instruction to be removed is control-flow-related, i.e. a jump, return, or a throw,
+        # cut edges in the CFG accordingly
+        # TODO: handle jumps and COND_THROWs
+        if self.insns[at].type in [NAddressCodeType.UNCOND_THROW, NAddressCodeType.RETURN]:
+            self.clear_successors()
+
         del self.insns[at]
 
     def erase_from_parent(self):
