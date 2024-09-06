@@ -197,7 +197,7 @@ class Decompiler:
     def hlir_to_pseudocode(self, method: IRMethod):
         # convert to pseudocode
         if self.config.rename_variables:
-            VariableAllocation().run_on_method(method)
+            VariableAllocation(self.config.prettify_method_calls).run_on_method(method)
 
         PropAccessPrettify().run_on_method(method)
 

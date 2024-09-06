@@ -5,9 +5,10 @@ from decompile.method_pass import MethodPass
 
 
 class VariableAllocation(MethodPass):
-    def __init__(self):
+    def __init__(self, rename_func_args):
         self.cur_var_no = -1
         self.reg2var_map = {}
+        self.rename_func_args = rename_func_args
 
     def run_on_method(self, method: IRMethod):
         for block in method.blocks:
@@ -50,6 +51,12 @@ class VariableAllocation(MethodPass):
                 elif real_arg.value == 'a2':
                     real_arg.type = 'var'
                     real_arg.value = 'this'
+                elif self.rename_func_args:
+                    if real_arg.value not in self.reg2var_map:
+                        new_arg_no = int(real_arg.value[1:]) - 3
+                        self.reg2var_map[real_arg.value] = f'a{new_arg_no}'
+                    real_arg.type = 'var'
+                    real_arg.value = self.reg2var_map[real_arg.value]
         elif real_arg.type == 'tmp':
             if real_arg.value not in self.reg2var_map:
                 self.reg2var_map[real_arg.value] = self.alloc_var()

@@ -38,7 +38,7 @@ class DecompilerConfig:
         self.recover_control_flow_structures = True
 
         # should we prettify method calls (i.e. remove the first three convention-defined arguments FunctionObject,
-        # NewTarget, and this)
+        # NewTarget, and this) and rename method arguments (i.e. a3 -> a0, a4 -> a1, etc)
         self.prettify_method_calls = True
 
         # passes in this list will be run after the builtin MLIR passes
