@@ -423,7 +423,12 @@ class InsnLifter:
         this_module = insn.parent_block.parent_method.parent_class.parent_module
         external_module_name = this_module.ctx.module_requests[class_name][external_module_no]
 
-        builder.create_assign(PandasmInsnArgument('module', external_module_name), label=insn.label)
+        regular_import = external_module_name['regular_import']
+        import_name = PandasmInsnArgument('module', regular_import.import_name)
+        local_name = PandasmInsnArgument('module', regular_import.local_name)
+        requested_module = PandasmInsnArgument('module', external_module_name['requested_module'])
+        builder.create_import(import_name, local_name, requested_module, label=insn.label)
+        builder.create_assign(PandasmInsnArgument('module', regular_import.local_name))
 
     @staticmethod
     def asyncfunctionenter(insn: NAddressCode, builder: IRBuilder):

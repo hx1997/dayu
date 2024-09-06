@@ -37,6 +37,10 @@ class DecompilerConfig:
         # should we try to recover high-level control flow structures
         self.recover_control_flow_structures = True
 
+        # should we prettify method calls (i.e. remove the first three convention-defined arguments FunctionObject,
+        # NewTarget, and this)
+        self.prettify_method_calls = True
+
         # passes in this list will be run after the builtin MLIR passes
         # each element should be a tuple (subclass of MethodPass, list of arguments to the constructor)
         self.extra_mlir_passes: typing.List[typing.Tuple[typing.Callable, typing.List]] = []
@@ -61,6 +65,7 @@ class DecompilerConfig:
         self.rename_variables = config.get('rename_variables', self.rename_variables)
         self.recover_control_flow_structures = config.get('recover_control_flow_structures',
                                                           self.recover_control_flow_structures)
+        self.prettify_method_calls = config.get('prettify_method_calls', self.prettify_method_calls)
         self.extra_mlir_passes = config.get('extra_mlir_passes', self.extra_mlir_passes)
         self.view_cfg = config.get('view_cfg', self.view_cfg)
 

@@ -109,3 +109,7 @@ class IRBuilder:
         # TODO: deal with exception handlers properly
         insn = NAddressCode(rop, [cond_arg1, cond_arg2, exception], NAddressCodeType.COND_THROW, label_name=label)
         self.insert(insn)
+
+    def create_import(self, imported_var, local_name, import_from_module, label=''):
+        insn = NAddressCode('', [imported_var, local_name, import_from_module], NAddressCodeType.IMPORT, label_name=label)
+        self.insert(insn)

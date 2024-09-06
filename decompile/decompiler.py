@@ -10,6 +10,8 @@ from decompile.passes.control_flow_structuring import ControlFlowStructuring
 from decompile.passes.copy_propagation import CopyPropagation
 from decompile.passes.dead_code import DeadCodeElimination
 from decompile.passes.defuse import DefUseAnalysis
+from decompile.passes.method_call_prettify import MethodCallPrettify
+from decompile.passes.prop_access_prettify import PropAccessPrettify
 from decompile.passes.print_pcode import PrintPcode
 from decompile.passes.live_variable import LiveVariableAnalysis
 from decompile.passes.peephole_opt import PeepholeOptimization
@@ -196,6 +198,12 @@ class Decompiler:
         # convert to pseudocode
         if self.config.rename_variables:
             VariableAllocation().run_on_method(method)
+
+        PropAccessPrettify().run_on_method(method)
+
+        if self.config.prettify_method_calls:
+            MethodCallPrettify().run_on_method(method)
+
         ControlFlowStructuring(self.config.recover_control_flow_structures).run_on_method(method)
 
     @staticmethod
