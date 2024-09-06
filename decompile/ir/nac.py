@@ -98,7 +98,7 @@ class NAddressCode:
             else:
                 return self.format_nac_str_with_label(f'if ({self.args[0]} {self.op} {self.args[1]}) throw {self.args[2]}')
         elif self.type == NAddressCodeType.IMPORT:
-            return self.format_nac_str_with_label('import { ' + f'{self.args[0]}' + ' } as ' + f'{self.args[1]} from {self.args[2]}')
+            return self.format_nac_str_with_label('import { ' + f'{self.args[0]}' + ' } as ' + f"{self.args[1]} from '{self.args[2]}';")
         elif self.type == NAddressCodeType.UNKNOWN:
             return self.format_nac_str_with_label(f'{self.op} {", ".join([str(arg) for arg in self.args])}')
 
