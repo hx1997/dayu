@@ -134,7 +134,7 @@ return v2
 ## 注意事项
 蒲篮尽可能输出合法的 ArkTS/TypeScript 代码，但不是所有情况都能够做到或者容易做到这一点。
 
-首先，蒲篮对高级语言控制流结构的恢复非常有限，因此输出的伪代码中会存在许多 `goto` 语句（表现为 `jump <标签名>`）。ArkTS 和 TypeScript 都不支持 `goto`，所以用户需要自己理清控制流并相应改写伪代码。
+首先，蒲篮对高级语言控制流结构的恢复仍然无法覆盖所有分支结构和循环结构，因此输出的伪代码中可能会存在 `goto` 语句（表现为 `jump <标签名>`）。ArkTS 和 TypeScript 都不支持 `goto`，所以用户需要自己理清控制流并相应改写伪代码。
 
 其次，在反编译出来的伪代码中，可能存在一些“伪函数”，用于代表无法方便地翻译成伪代码的一些操作。例如，获取[词法环境](https://gitee.com/openharmony/docs/blob/master/zh-cn/application-dev/quick-start/arkts-bytecode-fundamentals.md#%E8%AF%8D%E6%B3%95%E7%8E%AF%E5%A2%83%E5%92%8C%E8%AF%8D%E6%B3%95%E5%8F%98%E9%87%8F)的操作由 `__get_lexenv__` 来代表。
 
