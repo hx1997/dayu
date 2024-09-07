@@ -164,6 +164,7 @@ function __assert_defined__(obj) {
 - 《编译原理》第 2 版（龙书），作者 Alfred V. Aho, Monica S. Lam, Ravi Sethi and Jeffrey D. Ullman
 - [西安大略大学 CS447 Compiler Theory 课程](https://www.csd.uwo.ca/~mmorenom//CS447/Lectures/CodeOptimization.html/index.html)，Marc Moreno Maza 教授授课
 - 卡内基梅隆大学 15-411 Compiler Design 课程的讲义 [Lecture Notes on Decompilation](https://www.cs.cmu.edu/~fp/courses/15411-f13/lectures/20-decompilation.pdf)，Frank Pfenning 教授授课，Max Serrano 编写讲义
+- 《高级编译器设计与实现》（鲸书），作者 Steven S. Muchnick
 
 ## 许可协议
 GNU AGPL v3.0
