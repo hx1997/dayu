@@ -14,6 +14,8 @@ class PropAccessPrettify(MethodPass):
     def run_on_block(self, block: IRBlock):
         for insn in block.insns:
             for arg in insn.args:
+                if not isinstance(arg, PandasmInsnArgument):
+                    continue
                 self.prop_access_bracket_to_dot(arg)
 
     def is_valid_js_property_name(self, prop_name):
