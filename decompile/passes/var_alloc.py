@@ -77,6 +77,8 @@ class VariableAllocation(MethodPass):
     def add_declarations(self, method: IRMethod):
         entry_block = method.blocks[0]
         decl_vars = list(self.reg2var_map.values())
+        # rule out function arguments
+        decl_vars = [var for var in decl_vars if not var.startswith('a')]
         if len(decl_vars) > 0:
             decl_stmt = f'let {", ".join(decl_vars)}'
             declare_insn = NAddressCode(decl_stmt, [], nac_type=NAddressCodeType.UNKNOWN)
