@@ -204,7 +204,8 @@ class Decompiler:
         if self.config.prettify_method_calls:
             MethodCallPrettify().run_on_method(method)
 
-        ControlFlowStructuring(self.config.recover_control_flow_structures).run_on_method(method)
+        if self.config.recover_control_flow_structures:
+            ControlFlowStructuring().run_on_method(method)
 
     @staticmethod
     def write_cfg_to_file(method: IRMethod, output_path, view=False):
