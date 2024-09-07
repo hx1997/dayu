@@ -36,6 +36,7 @@ class DecompilerConfig:
 
         # should we try to recover high-level control flow structures
         self.recover_control_flow_structures = True
+        self.use_old_control_flow_recovery_algorithm = False
 
         # should we prettify method calls (i.e. remove the first three convention-defined arguments FunctionObject,
         # NewTarget, and this) and rename method arguments (i.e. a3 -> a0, a4 -> a1, etc)
@@ -65,6 +66,8 @@ class DecompilerConfig:
         self.rename_variables = config.get('rename_variables', self.rename_variables)
         self.recover_control_flow_structures = config.get('recover_control_flow_structures',
                                                           self.recover_control_flow_structures)
+        self.use_old_control_flow_recovery_algorithm = config.get('use_old_control_flow_recovery_algorithm',
+                                                          self.use_old_control_flow_recovery_algorithm)
         self.prettify_method_calls = config.get('prettify_method_calls', self.prettify_method_calls)
         self.extra_mlir_passes = config.get('extra_mlir_passes', self.extra_mlir_passes)
         self.view_cfg = config.get('view_cfg', self.view_cfg)

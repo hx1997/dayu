@@ -7,6 +7,7 @@ from decompile.ir.module import IRModule
 from decompile.pa2rawir import Pandasm2RawIR
 from decompile.passes.buildcfg import BuildCFG
 from decompile.passes.control_flow_structuring import ControlFlowStructuring
+from decompile.passes.control_flow_structuring_old import ControlFlowStructuringOld
 from decompile.passes.copy_propagation import CopyPropagation
 from decompile.passes.dead_code import DeadCodeElimination
 from decompile.passes.defuse import DefUseAnalysis
@@ -205,7 +206,10 @@ class Decompiler:
             MethodCallPrettify().run_on_method(method)
 
         if self.config.recover_control_flow_structures:
-            ControlFlowStructuring().run_on_method(method)
+            if self.config.use_old_control_flow_recovery_algorithm:
+                ControlFlowStructuringOld().run_on_method(method)
+            else:
+                ControlFlowStructuring().run_on_method(method)
 
     @staticmethod
     def write_cfg_to_file(method: IRMethod, output_path, view=False):

@@ -9,7 +9,7 @@ from decompile.method_pass import MethodPass
 from pandasm.insn import PandasmInsnArgument
 
 
-class ControlFlowStructuring(MethodPass):
+class ControlFlowStructuringOld(MethodPass):
     """
     Note: This pass doesn't maintain the CFG. It's meant to be used in final stages of decompilation
     to recover high-level control structures like "if" or "while". Having reached these stages,
