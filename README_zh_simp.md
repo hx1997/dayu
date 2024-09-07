@@ -107,16 +107,15 @@ python main.py -abc modules.12.abc -pa modules.12.abc.txt -dme com.example.myapp
 ```typescript
 let v0, v1, v2 
 v0 = 0x0
-jump jump_label_1
 jump_label_1:
-if (v0 >= 0x5) jump jump_label_0
-import { default } as hilog from @ohos:hilog
+while (v0 < 0x5) { 
+import { default } as hilog from '@ohos:hilog';
 v1 = __is_hole__(hilog)
 if (v1 == true) throw 'Value of "hilog" is undefined'
-v2 = hilog.info(0x0, "hello", (("world" + v0) + ""))
+v2 = hilog.info(hilog, 0x0, "hello", (("world" + v0) + ""))
 v2 = __ToNumeric__(v0)
 v0 = (v2 + 0x1)
-jump jump_label_1
+} 
 jump_label_0:
 v2 = v0
 return v2
@@ -155,7 +154,7 @@ function __assert_defined__(obj) {
 ## 已知问题
 - 反编译速度极慢，主要是因为文本方舟字节码的解析和复制传播写得很烂，复杂度太高
 - 支持的指令较少
-- 无法恢复循环结构和部分条件结构
+- 循环结构和条件结构在部分情况下无法恢复
 - 不支持 `try-catch` 结构
 - 缺少类型分析（ArkTS 和 TypeScript 都是有类型的）
 

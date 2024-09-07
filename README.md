@@ -107,16 +107,15 @@ After decompiling using the default configuration, this is what we get:
 ```typescript
 let v0, v1, v2 
 v0 = 0x0
-jump jump_label_1
 jump_label_1:
-if (v0 >= 0x5) jump jump_label_0
-import { default } as hilog from @ohos:hilog
+while (v0 < 0x5) { 
+import { default } as hilog from '@ohos:hilog';
 v1 = __is_hole__(hilog)
 if (v1 == true) throw 'Value of "hilog" is undefined'
-v2 = hilog.info(0x0, "hello", (("world" + v0) + ""))
+v2 = hilog.info(hilog, 0x0, "hello", (("world" + v0) + ""))
 v2 = __ToNumeric__(v0)
 v0 = (v2 + 0x1)
-jump jump_label_1
+} 
 jump_label_0:
 v2 = v0
 return v2
@@ -155,7 +154,7 @@ function __assert_defined__(obj) {
 ## Known Issues
 - Slow. Very slow. Largely caused by two things: Panda Assembly parsing and copy propagation, both of which are badly written.
 - Limited coverage of the instruction set
-- Loop structures and some conditional structures are not recovered
+- Loop structures and conditional structures are not recovered in some cases
 - No support for `try-catch` structures
 - Lack of type analysis (both ArkTS and TypeScript are typed)
 
