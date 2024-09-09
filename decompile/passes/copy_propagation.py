@@ -1,3 +1,5 @@
+import typing
+
 from ordered_set import OrderedSet
 
 from decompile.ir.basicblock import IRBlock
@@ -6,6 +8,7 @@ from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType, NAddressCode
 from decompile.method_pass import MethodPass
 from decompile.passes.reaching_def import ReachingDefinitions
+from decompile.passes.reverse_postorder import ReversePostorder
 from pandasm.insn import PandasmInsnArgument
 
 
@@ -19,7 +22,9 @@ class CopyPropagation(MethodPass):
         copies = self.collect_copies(method)
         for block in method.blocks:
             gen[block], kill[block] = self.analyze_gen_kill(block, copies)
-        in_c, out_c = self.copy_propagation(method, gen, kill, copies)
+
+        rpo = ReversePostorder().run_on_method(method)
+        in_c, out_c = self.copy_propagation(method, rpo, gen, kill, copies)
         self.replace_copies(copies, in_c, self.in_r)
         return in_c, out_c
 
@@ -35,8 +40,9 @@ class CopyPropagation(MethodPass):
 
         for copy_ in copies:
             if len(copy_.args) == 2:
+                copy_args = {copy_.args[0], copy_.args[1]}
                 for definition in def_block:
-                    if definition.args[0] in [copy_.args[0], copy_.args[1]]:
+                    if definition.args[0] in copy_args:
                         # if for this copy, say x=y, either x or y is redefined in this block, then add it to kill set
                         kill_block.add(copy_)
                     # another case is instructions like acc = reg:v2["abc"], where the array access is treated as one
@@ -48,16 +54,17 @@ class CopyPropagation(MethodPass):
                         if definition.args[0] == copy_.args[1].ref_obj:
                             kill_block.add(copy_)
             elif len(copy_.args) >= 3:
+                copy_args = {*copy_.args}
                 for definition in def_block:
-                    if definition.args[0] in [copy_.args[0], copy_.args[1], *copy_.args[2:]]:
+                    if definition.args[0] in copy_args:
                         # if for this copy, say x=y+z, any of x, y and z is redefined in this block, add it to kill set
                         kill_block.add(copy_)
             # there could be nested ExprArgs on rhs, take any arguments in ExprArg into account
             for definition in def_block:
-                vars_used_in_copy = []
+                vars_used_in_copy = set()
                 for arg in copy_.args[1:]:
                     if isinstance(arg, ExprArg):
-                        vars_used_in_copy.extend(arg.get_used_args())
+                        vars_used_in_copy.update(arg.get_used_args())
                 if definition.args[0] in vars_used_in_copy:
                     kill_block.add(copy_)
 
@@ -127,10 +134,10 @@ class CopyPropagation(MethodPass):
             except KeyError:
                 pass
 
-    def copy_propagation(self, method: IRMethod, gen, kill, copies):
+    def copy_propagation(self, method: IRMethod, rpo: typing.List[IRBlock], gen, kill, copies):
         in_block, out_block = {}, {}
         entry_block = method.blocks[0]
-        extended_block_list = [entry_block, *method.blocks[1:]]
+        extended_block_list = rpo
         in_block[entry_block] = OrderedSet()
         out_block[entry_block] = gen[entry_block]
         for block in extended_block_list:

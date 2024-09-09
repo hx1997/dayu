@@ -30,13 +30,13 @@ class ExprArg(PandasmInsnArgument):
                 + elems_hash + (self.ref_obj.__hash__() if self.ref_obj else '<null>'.__hash__()))
 
     def get_used_args(self):
-        used_args = []
+        used_args = set()
         for arg in self.value:
             if isinstance(arg, ExprArg):
-                used_args.extend(arg.get_used_args())
+                used_args.update(arg.get_used_args())
             else:
                 if arg.ref_obj:
-                    used_args.append(arg.ref_obj)
+                    used_args.add(arg.ref_obj)
                 else:
-                    used_args.append(arg)
+                    used_args.add(arg)
         return used_args

@@ -1,8 +1,11 @@
+import typing
+
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.expr import ExprArg
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType, NAddressCode
 from decompile.method_pass import MethodPass
+from decompile.passes.reverse_postorder import ReversePostorder
 from pandasm.insn import PandasmInsnArgument
 
 
@@ -12,7 +15,8 @@ class ReachingDefinitions(MethodPass):
         copies = self.collect_copies(method)
         for block in method.blocks:
             gen[block], kill[block] = self.analyze_gen_kill(block, copies)
-        return self.reaching_definitions(method, gen, kill)
+        rpo = ReversePostorder().run_on_method(method)
+        return self.reaching_definitions(method, rpo, gen, kill)
 
     @classmethod
     def analyze_gen_kill(cls, block: IRBlock, copies, stop_on_insn=None):
@@ -93,7 +97,7 @@ class ReachingDefinitions(MethodPass):
             except KeyError:
                 pass
 
-    def reaching_definitions(self, method: IRMethod, gen, kill):
+    def reaching_definitions(self, method: IRMethod, rpo: typing.List[IRBlock], gen, kill):
         in_block, out_block = {}, {}
         # add dummy entry and exit blocks
         entry_block = IRBlock()
@@ -105,7 +109,7 @@ class ReachingDefinitions(MethodPass):
                 no_successor_blocks.append(block)
                 block.add_successor(exit_block)
 
-        extended_block_list = [entry_block, exit_block, *method.blocks]
+        extended_block_list = [entry_block, exit_block, *rpo]
         for block in extended_block_list:
             out_block[block] = set()
         gen[exit_block] = set()
