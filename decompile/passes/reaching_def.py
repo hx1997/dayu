@@ -30,8 +30,6 @@ class ReachingDefinitions(MethodPass):
                 cls.analyze_assign(insn, def_block, gen_block)
 
         for copy_ in copies:
-            # each `copy` is a tuple (block_hash, arg1 (lhs), arg2 (rhs)) and possibly
-            # with additional elements operator and argn (remaining arguments on rhs)
             for definition in def_block:
                 if definition != copy_ and definition.args[0] == copy_.args[0]:
                     # if for this copy, say x=y, x is redefined in this block, then add it to kill set
