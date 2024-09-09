@@ -25,6 +25,9 @@ class ControlFlowStructuring(MethodPass):
     Note: This pass doesn't maintain the CFG. It's meant to be used in final stages of decompilation
     to recover high-level control structures like "if" or "while". Having reached these stages,
     we're going to produce the final pseudocode so IR constraints and CFG don't matter anymore
+
+    Acknowledgements: this pass implements the structural analysis algorithm put forward in
+    *Advanced Compiler Design and Implementation* by Steven S. Muchnick
     """
     def __init__(self):
         self.struct_of = {}

@@ -164,7 +164,7 @@ dayu wasn't built in a day. It's the product of strenuous endeavor (plus many cu
 - *Compilers: Principles, Techniques, and Tools, Second Edition* by Alfred V. Aho, Monica S. Lam, Ravi Sethi and Jeffrey D. Ullman
 - [CS447 Compiler Theory](https://www.csd.uwo.ca/~mmorenom//CS447/Lectures/CodeOptimization.html/index.html), University of Western Ontario, taught by Professor Marc Moreno Maza
 - [Lecture Notes on Decompilation](https://www.cs.cmu.edu/~fp/courses/15411-f13/lectures/20-decompilation.pdf) from 15-411 Compiler Design, Carnegie Mellon University, course by Professor Frank Pfenning, notes by Max Serrano
-- *Advanced Compiler Design and Implementation* by Steven S. Muchnick 
+- *Advanced Compiler Design and Implementation* by Steven S. Muchnick
 
 ## License
 GNU AGPL v3.0
