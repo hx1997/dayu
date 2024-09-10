@@ -34,7 +34,7 @@ In order to keep analysis easy, NACs follow a particular format at LLIR and MLIR
 - `CALL` NACs can have more than three arguments. Expression arguments (more on this later) can have arguments within themselves. For example, in the NAC `v0 = (v1 + 1) + 2`, the second argument is an expression argument `(v1 + 1)`, which itself has two arguments `v1` and `1`. Nevertheless, this NAC is still, in form, a three-argument one (i.e. the expression argument is seen as a whole).
 - The order of arguments matters, and each position has its meaning. For example, the first argument for an `ASSIGN` NAC is always the destination of assignment.
 - Arguments are usually wrapped inside `PandasmInsnArgument`s, and they have types too (e.g., `reg` for register arguments).
-- One type of argument, `ExprArg`, which represents expressions, allows nesting (i.e. expressions within expressions, like `(v1 + (v2 + 3)))`. To keep things simple, each `arith`-type expression take one operator and at most two operands/arguments.
+- One type of argument, `ExprArg`, which represents expressions, allows nesting (i.e. expressions within expressions, like `(v1 + (v2 + 3))`. To keep things simple, each `arith`-type expression take one operator and at most two operands/arguments.
 - Property accesses are treated as one argument of `field` type and with a reference object, as opposed to two arguments. For example, `v0["set"]` is an argument of type `field` and with value `"set"`. Its reference object is `v0`.
 - Reference objects are not nested, i.e. a reference object can't be an argument with a reference object. This ensures complicated array accesses like `acc["foo"]["bar"]` don't occur in the IR.
 - There is at most one argument with a reference object in a single NAC.
