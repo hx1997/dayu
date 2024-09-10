@@ -249,16 +249,6 @@ class CopyPropagation(MethodPass):
             # in cases like "acc = acc['xxx']", when var_to_replace == acc, and replace_with == acc['xxx'],
             # replacing results in infinite recursion ("acc['xxx'] = acc['xxx']['xxx'] and so on), so skip it
             return False
-        if copy_op and self.constrained:
-            # an ASSIGN NAC can only take at most one operator on the rhs
-            # for cases like:
-            #   acc = -v2
-            #   v3 = acc + v4
-            # if var_to_replace == acc, replace_with == v2, and copy_op == '-', this will become
-            #   acc = -v2
-            #   v3 = -v2 + v4
-            # violating the ASSIGN NAC format
-            return False
         if var_to_replace.type.startswith('lexenv'):
             # we don't want to replace newlexenv instructions either, because this could render it dead code
             # and wrongly eliminated, for example:
