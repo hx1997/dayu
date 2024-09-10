@@ -58,7 +58,7 @@ v1 = v3
 
 DCE will remove the first NAC since the result of this assignment is overwritten by the third NAC and thus useless.
 
-PO matches certain patterns in the code and rewrite them in a more concise fashion. For instance, the NAC pattern
+PO matches certain patterns in the code and rewrites them in a more concise fashion. For instance, the NAC pattern
 
 ```
 a = b
