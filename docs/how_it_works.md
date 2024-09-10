@@ -27,4 +27,48 @@ At the time of writing, there are eight types of NACs:
 
 In the lifter methods, Raw IR will be converted to LLIR that consists of NACs of these types only. For example, a Raw IR instruction `lda v2` (assign `v2` to `acc`) will become a NAC of `ASSIGN` type, with arguments `acc` and `v2`.
 
+### IR format constraints
+In order to keep analysis easy, NACs follow a particular format at LLIR and MLIR levels. The complete format may be detailed later in a separate document (that is, if I have the time), but some general rules can be laid down right now:
+
+- Each NAC allows at most three arguments (with a few exceptions detailed in the next point). The precise number allowed for each NAC type has been described above.
+- `CALL` NACs can have more than three arguments. Expression arguments (more on this later) can have arguments within themselves. For example, in the NAC `v0 = (v1 + 1) + 2`, the second argument is an expression argument `(v1 + 1)`, which itself has two arguments `v1` and `1`. Nevertheless, this NAC is still, in form, a three-argument one (i.e. the expression argument is seen as a whole).
+- The order of arguments matters, and each position has its meaning. For example, the first argument for an `ASSIGN` NAC is always the destination of assignment.
+- Arguments are usually wrapped inside `PandasmInsnArgument`s, and they have types too (e.g., `reg` for register arguments).
+- One type of argument, `ExprArg`, which represents expressions, allows nesting (i.e. expressions within expressions, like `(v1 + (v2 + 3)))`. To keep things simple, each `arith`-type expression take one operator and at most two operands/arguments.
+- Property accesses are treated as one argument of `field` type and with a reference object, as opposed to two arguments. For example, `v0["set"]` is an argument of type `field` and with value `"set"`. Its reference object is `v0`.
+- Reference objects are not nested, i.e. a reference object can't be an argument with a reference object. This ensures complicated array accesses like `acc["foo"]["bar"]` don't occur in the IR.
+- There is at most one argument with a reference object in a single NAC.
+
+Any manipulation in Stages 2 and 3 is carried out carefully so as not to break these constraints, and many manipulations presume that these constraints hold true.  
+
+## Stage 3: LLIR to MLIR
+A powerful tool known as data flow analysis is employed in this stage to simplify LLIR. The output, MLIR, should ideally be a medium form that is easier for humans to read than LLIR, and that allows convenient analysis for machines.
+
+In this stage, we take extra care that the IR constraints are not violated, hence the name "constrained data flow analysis". A constrained analysis guarantees its output can be used as input for itself or another analysis, thanks to its constraint-preserving property.
+
+Mainly two data flow analyses are performed: live variable analysis (LVA) and dead code elimination (DCE). A third analysis, copy propagation, is a bit computationally expensive, and is therefore postponed to Stage 4 by default. Peephole optimization (PO) is also performed, although it's not a data flow analysis.
+
+LVA determines which variables are dead (not used) after a certain point in a program. DCE is predicated on LVA, and it eliminates NACs whose result is never used (i.e. dead code). For instance, given the following NACs:
+
+```
+v1 = acc
+v2 = acc
+v1 = v3
+```
+
+DCE will remove the first NAC since the result of this assignment is overwritten by the third NAC and thus useless.
+
+PO matches certain patterns in the code and rewrite them in a more concise fashion. For instance, the NAC pattern
+
+```
+a = b
+b = a
+```
+
+is obviously redundant and can be rewritten as
+
+```
+a = b
+```
+
 (to be continued)
