@@ -44,7 +44,7 @@ Any manipulation in Stages 2 and 3 is carried out carefully so as not to break t
 ## Stage 3: LLIR to MLIR
 A powerful tool known as data flow analysis is employed in this stage to simplify LLIR. The output, MLIR, should ideally be a medium form that is easier for humans to read than LLIR, and that allows convenient analysis for machines.
 
-In this stage, we take extra care that the IR constraints are not violated, hence the name "constrained data flow analysis". A constrained analysis guarantees its output can be used as input for itself or another analysis, thanks to its constraint-preserving property.
+In this stage, we take extra care that the IR constraints are not violated, hence the name "constrained data flow analysis". A constrained analysis guarantees its output can be used as input to itself or another analysis, thanks to its constraint-preserving property.
 
 Mainly two data flow analyses are performed: live variable analysis (LVA) and dead code elimination (DCE). A third analysis, copy propagation, is a bit computationally expensive, and is therefore postponed to Stage 4 by default. Peephole optimization (PO) is also performed, although it's not a data flow analysis.
 
@@ -70,5 +70,28 @@ is obviously redundant and can be rewritten as
 ```
 a = b
 ```
+
+The two analyses are executed repeatedly because after each iteration, some NACs may be optimized away and new dead code or optimizable patterns may emerge. We stop once no code changes after an iteration.
+
+## Stage 4: MLIR to HLIR
+We continue to do data flow analysis, but this time in an unconstrained way. "Unconstrained" means some of the IR format constraints may be broken, and as a result, the output can't be fed into an LLIR or MLIR analysis pass anymore.
+
+This stage involves an important analysis, copy propagation (CP). Put simply, CP tries to replace all uses of a variable with what it's defined to be. For example, if we have
+
+```
+v1 = acc
+acc = v1 + 1
+```
+
+where the first NAC is a copy (assignment) that defines `v1` and the second NAC uses `v1`. CP will replace the second `v1` with what it was defined to be, i.e. `acc`:
+
+```
+v1 = acc
+acc = acc + 1
+```
+
+The astute reader may have noticed that the first NAC is now useless and can be swept away with DCE. In fact, in this stage, we follow CP immediately with DCE.
+
+We also perform unconstrained PO here.
 
 (to be continued)
