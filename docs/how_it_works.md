@@ -71,7 +71,7 @@ is obviously redundant and can be rewritten as
 a = b
 ```
 
-The two analyses are executed repeatedly because after each iteration, some NACs may be optimized away and new dead code or optimizable patterns may emerge. We stop once no code changes after an iteration.
+LVA, DCE, and PO are executed repeatedly because after each iteration, some NACs may be optimized away and new dead code or optimizable patterns may emerge. We stop once no code changes after an iteration.
 
 ## Stage 4: MLIR to HLIR
 We continue to do data flow analysis, but this time in an unconstrained way. "Unconstrained" means some of the IR format constraints may be broken, and as a result, the output can't be fed into an LLIR or MLIR analysis pass anymore.
