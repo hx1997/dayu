@@ -116,7 +116,7 @@ if (...) {
 }
 ```
 
-where the `if` condition is taken from the last instruction in Block B, and then *reduce* the region into a single block, say Block B', containing the rewritten code. Next, we have three sequential blocks (A, B', and E), which again is a kind of acyclic region and can be reduced. Finally, we're left with only one block and the algorithm terminates. In real-world cases, there are probably much more regions, so we may need to reduce over and over again until one block remains.
+where the `if` condition is taken from the last instruction in Block B, and then *reduce* (or merge) the region into a single block, say Block B', containing the rewritten code. Next, we have three sequential blocks (A, B', and E), which again is a kind of acyclic region and can be reduced. Finally, we're left with only one block and the algorithm terminates. In real-world cases, there are probably much more regions, so we may need to reduce over and over again until one block remains.
 
 Beyond the general principles, more underlying details should be taken into account. For one thing, inner nested constructs should be processed before outer ones. For another, sometimes, we may encounter *improper* regions, ones that don't fit into any of the predefined patterns. They are generally dealt with by cutting one or more edges to transform the region in question into a proper one. The severed edges are replaced with a `goto` at the end of their source blocks. dayu doesn't handle improper regions for now.
 
