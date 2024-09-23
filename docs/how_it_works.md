@@ -94,4 +94,32 @@ The astute reader may have noticed that the first NAC is now useless and can be 
 
 We also perform unconstrained PO here.
 
-(to be continued)
+## Stage 5: HLIR to pseudocode
+Structured control flow is a hallmark of virtually all high-level programming languages. It's thus imperative to recover control flow structures (e.g., `if-else`, `while` loops) if we aim for high-level, human-readable pseudocode.
+
+One of the classical algorithms for recovering control flow structures from a CFG is *structural analysis*. The basic idea behind it is pretty simple and straightforward. We start with a given CFG and match patterns in it. Certain patterns of connected basic blocks constitute a *region*, of which there are two types: acyclic and cyclic. Acyclic regions include `if-then`, `if-else-then`, and sequential blocks. Cyclic regions include self loops, `while` loops, and natural loops. The exact constructs may vary between languages, but these are what dayu deals with.
+
+Let's take the `if-else-then` region as an example.
+
+![](imgs/if-else-then.png)
+
+In this diagram, Blocks B, C, and D make up an `if-else-then` region, because they fit the pattern of that kind of region: one conditional block which has two successors, and one successor isn't a successor to the other, nor does either of them go back to the conditional block.
+
+Now that a region match is found, we rewrite the code as:
+
+```
+<Block B>
+if (...) {
+    <Block C>
+} else {
+    <Block D>
+}
+```
+
+where the `if` condition is taken from the last instruction in Block B, and then *reduce* the region into a single block, say Block B', containing the rewritten code. Next, we have three sequential blocks, which again is a kind of acyclic region and can be reduced. Finally, we're left with only one block and the algorithm terminates. In real-world cases, there are probably much more regions, so we may need to reduce over and over again until one block remains.
+
+Beyond the general principles, more underlying details should be taken into account. For one thing, inner nested constructs should be processed before outer ones. For another, sometimes, we may encounter *improper* regions, ones that don't fit into any of the predefined patterns. They are generally dealt with by cutting one or more edges to transform the region in question into a proper one. The severed edges are replaced with a `goto` at the end of their source blocks. dayu doesn't handle improper regions for now.
+
+Also done in Stage 5 are variable allocation, which renames registers into variables, and some minor optimizations to make the code more readable.
+
+Congratulations! You've arrived at the destination: pseudocode. It's been a tiring journey, but (hopefully) a rewarding one too. This is the end (or is it...?).
