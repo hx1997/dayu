@@ -25,7 +25,7 @@ At the time of writing, there are eight types of NACs:
 - COND_THROW: conditional throw statements, takes exactly three arguments
 - UNKNOWN: reserved for code that is not "proper" IR (not having their `NAddressCode` fields properly set up), e.g. Raw IR or pseudocode, sometimes HLIR too
 
-In the lifter methods, Raw IR will be converted to LLIR that consists of NACs of these types only. For example, a Raw IR instruction `lda v2` (assign `v2` to `acc`) will become a NAC of `ASSIGN` type, with arguments `acc` and `v2`.
+In the lifter methods, Raw IR will be converted to LLIR that consists of NACs of these types only. For example, the Raw IR instruction `lda v2` (assign `v2` to `acc`) will become a NAC of `ASSIGN` type, with arguments `acc` and `v2`.
 
 ### IR format constraints
 In order to keep analysis easy, NACs follow a particular format at LLIR and MLIR levels. The complete format may be detailed later in a separate document (that is, if I have the time), but some general rules can be laid down right now:
@@ -48,7 +48,7 @@ In this stage, we take extra care that the IR constraints are not violated, henc
 
 Mainly two data flow analyses are performed: live variable analysis (LVA) and dead code elimination (DCE). A third analysis, copy propagation, is a bit computationally expensive, and is therefore postponed to Stage 4 by default. Peephole optimization (PO) is also performed, although it's not a data flow analysis.
 
-LVA determines which variables are dead (not used) after a certain point in a program. DCE is predicated on LVA, and it eliminates NACs whose result is never used (i.e. dead code). For instance, given the following NACs:
+LVA determines which variables are dead (not used) after a certain point in a program. DCE is predicated on LVA, and it eliminates NACs whose result is never used (i.e. dead code). Consider the following NACs:
 
 ```
 v1 = acc
@@ -76,7 +76,7 @@ LVA, DCE, and PO are executed repeatedly because after each iteration, some NACs
 ## Stage 4: MLIR to HLIR
 We continue to do data flow analysis, but this time in an unconstrained way. "Unconstrained" means some of the IR format constraints may be broken, and as a result, the output can't be fed into an LLIR or MLIR analysis pass anymore.
 
-This stage involves an important analysis, copy propagation (CP). Put simply, CP tries to replace all uses of a variable with what it's defined to be. For example, if we have
+This stage involves an important analysis, copy propagation (CP). Put simply, CP tries to replace all uses of a variable with its defined value. For example, if we have
 
 ```
 v1 = acc
@@ -97,7 +97,7 @@ We also perform unconstrained PO here.
 ## Stage 5: HLIR to pseudocode
 Structured control flow is a hallmark of virtually all high-level programming languages. It's thus imperative to recover control flow structures (e.g., `if-else`, `while` loops) if we aim for high-level, human-readable pseudocode.
 
-One of the classical algorithms for recovering control flow structures from a CFG is *structural analysis*. The basic idea behind it is pretty simple and straightforward. We start with a given CFG and match patterns in it. Certain patterns of connected basic blocks constitute a *region*, of which there are two types: acyclic and cyclic. Acyclic regions include `if-then`, `if-else-then`, and sequential blocks. Cyclic regions include self loops, `while` loops, and natural loops. The exact constructs may vary between languages, but these are what dayu deals with.
+One of the classical algorithms for recovering control flow structures from a CFG is *structural analysis*. The basic idea behind it is fairly simple and straightforward. We start with a given CFG and match patterns in it. Certain patterns of connected basic blocks constitute a *region*, of which there are two types: acyclic and cyclic. Acyclic regions include `if-then`, `if-else-then`, and sequential blocks. Cyclic regions include self loops, `while` loops, and natural loops. The exact constructs may vary between languages, but these are what dayu deals with.
 
 Let's take the `if-else-then` region as an example.
 
@@ -118,7 +118,7 @@ if (...) {
 
 where the `if` condition is taken from the last instruction in Block B, and then *reduce* (or merge) the region into a single block, say Block B', containing the rewritten code. Next, we have three sequential blocks (A, B', and E), which again is a kind of acyclic region and can be reduced. Finally, we're left with only one block and the algorithm terminates. In real-world cases, there are probably much more regions, so we may need to reduce over and over again until one block remains.
 
-Beyond the general principles, more underlying details should be taken into account. For one thing, inner nested constructs should be processed before outer ones. For another, sometimes, we may encounter *improper* regions, ones that don't fit into any of the predefined patterns. They are generally dealt with by cutting one or more edges to transform the region in question into a proper one. The severed edges are replaced with a `goto` at the end of their source blocks. dayu doesn't handle improper regions for now.
+Beyond the general principles, there are further details that need consideration. Firstly, inner nested constructs should be processed before outer ones. Secondly, sometimes, we may encounter *improper* regions, ones that don't fit into any of the predefined patterns. They are generally dealt with by cutting one or more edges to transform the region in question into a proper one. The severed edges are replaced with a `goto` at the end of their source blocks. dayu doesn't handle improper regions for now.
 
 Also done in Stage 5 are variable allocation, which renames registers into variables, and some minor optimizations to make the code more readable.
 
