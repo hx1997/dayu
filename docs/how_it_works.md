@@ -129,7 +129,7 @@ Data flow analysis features prominently in static program analysis. It answers q
 
 First, let's go over some commonly used concepts in data flow analysis.
 
-A *program point* exists before the first instruction, after the last instruction, and between any two instructions in a function. We say "at program point *p*" to mean the program is in such a state that the instructions before this point have been executed, but those after have not.
+A *program point* exists before the first instruction, after the last instruction, and between any two instructions in a function. We say "at program point *p*" to mean the program is in such a state that the instructions before *p* have been executed, but those after have not.
 
 A *definition* of a variable occurs when a value is assigned/reassigned to it. A *use* of a variable refers to when its defined value is accessed (but not changed). *Killing* a definition means the value assigned by the definition is no longer valid because a new value has been assigned.
 
