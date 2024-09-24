@@ -123,3 +123,21 @@ Beyond the general principles, there are further details that need consideration
 Also done in Stage 5 are variable allocation, which renames registers into variables, and some minor optimizations to make the code more readable.
 
 Congratulations! You've arrived at the destination: pseudocode. It's been a tiring journey, but (hopefully) a rewarding one too. This is the end (or is it...?).
+
+## Appendix: Data Flow Analysis
+Data flow analysis features prominently in static program analysis. It answers questions about how data propagates throughout the program by modelling the effects of certain elements, from instructions, via basic blocks and functions, to the entire program. For simplicity, we'll confine our discussion to intraprocedural analysis—analysis of functions and smaller units.
+
+First, let's go over some commonly used concepts in data flow analysis.
+
+A *program point* exists before the first instruction, after the last instruction, and between any two instructions in a function. We say "at program point *p*" to mean the program is in such a state that the instructions before this point have been executed, but those after have not.
+
+A *definition* of a variable occurs when a value is assigned/reassigned to it. A *use* of a variable refers to when its defined value is accessed (but not changed). *Killing* a definition means the value assigned by the definition is no longer valid because a new value has been assigned.
+
+Next, determine your goal. What information do you want to know about the function? Perhaps you're interested in whether a definition is still valid at a certain program point. This analysis is what we call *reaching definitions* (RD), which we'll use as an example moving forward.
+
+Then, depending on your goal, model the effects of an instruction. For RD, "effects" means what variables this instruction defines and what previous definitions it kills.
+
+Next, extend the modelling to basic blocks. For each block, you'll need to keep a `gen` set for new definitions (that are not killed) in this block, and a `kill` set for definitions in the function that are killed by this block. Note that this step is essentially the same as what's done in the last step, except on a basic block scale. Start with empty sets and modify them as you analyze each instruction. Do this for every basic block. 
+
+Last, once we have the sets ready for all blocks, we can combine the results to obtain RD information for the entire function. Take the definitions valid at the entry of a block, remove those in the `kill` set of the block, and then add those in the `gen` set. The result is the definitions valid at the exit of the block, which are also valid at the entry of its successors. Repeat this process for the successors, and the successors to sucessors... The algorithm will eventually converge, and by then we'll know what variables are valid at the end of any block. More details on the algorithm can be found in compiler textbooks and on the internet.
+
