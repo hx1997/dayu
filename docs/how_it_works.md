@@ -5,8 +5,28 @@ The dayu decompiler works by first translating the bytecode into an intermediate
 
 ![](imgs/decompiler_workflow.png)
 
+We'll show you what the following method looks like at these stages to give you an idea of how the code is transformed.
+
+```typescript
+function foo() {
+    let i = 0
+    for (i = 0; i < 5; i++) {
+      hilog.info(0x0, 'hello', `world${i}`)
+    }
+    return i
+}
+```
+
 ## Stage 1: Bytecode to Raw IR
 This stage simply parses Panda Assembly, extracts bytecode instructions, and puts them into dayu's internal structures (e.g., an `NAddressCode` for each instruction). Subsequent analysis and translation will be performed on these internal structures only.
+
+<details>
+    <summary>Example: Raw IR</summary>
+
+The Raw IR for the example method is:
+
+![](imgs/raw_ir_example.png)
+</details>
 
 ## Stage 2: Raw IR to LLIR
 In this stage, we build the Control Flow Graph (CFG) based on Raw IR, and lift Raw IR to LLIR. We aim to represent the operations of the original bytecode with a restricted and standardized set of IR instructions. This unified form facilitates analysis and decompilation.
@@ -41,6 +61,14 @@ In order to keep analysis easy, NACs follow a particular format at LLIR and MLIR
 
 Any manipulation in Stages 2 and 3 is carried out carefully so as not to break these constraints, and many manipulations presume that these constraints hold true.  
 
+<details>
+    <summary>Example: LLIR</summary>
+
+The LLIR for the example method is:
+
+![](imgs/llir_example.png)
+</details>
+
 ## Stage 3: LLIR to MLIR
 A powerful tool known as data flow analysis is employed in this stage to simplify LLIR. The output, MLIR, should ideally be a medium form that is easier for humans to read than LLIR, and that allows convenient analysis for machines.
 
@@ -73,6 +101,14 @@ a = b
 
 LVA, DCE, and PO are executed repeatedly because after each iteration, some NACs may be optimized away and new dead code or optimizable patterns may emerge. We stop once no code changes after an iteration.
 
+<details>
+    <summary>Example: MLIR</summary>
+
+The MLIR for the example method is:
+
+![](imgs/mlir_example.png)
+</details>
+
 ## Stage 4: MLIR to HLIR
 We continue to do data flow analysis, but this time in an unconstrained way. "Unconstrained" means some of the IR format constraints may be broken, and as a result, the output can't be fed into an LLIR or MLIR analysis pass anymore.
 
@@ -93,6 +129,14 @@ acc = acc + 1
 The astute reader may have noticed that the first NAC is now useless and can be swept away with DCE. In fact, in this stage, we follow CP immediately with DCE.
 
 We also perform unconstrained PO here.
+
+<details>
+    <summary>Example: HLIR</summary>
+
+The HLIR for the example method is:
+
+![](imgs/hlir_example.png)
+</details>
 
 ## Stage 5: HLIR to pseudocode
 Structured control flow is a hallmark of virtually all high-level programming languages. It's thus imperative to recover control flow structures (e.g., `if-else`, `while` loops) if we aim for high-level, human-readable pseudocode.
@@ -123,6 +167,14 @@ Beyond the general principles, there are further details that need consideration
 Also done in Stage 5 are variable allocation, which renames registers into variables, and some minor optimizations to make the code more readable.
 
 Congratulations! You've arrived at the destination: pseudocode. It's been a tiring journey, but (hopefully) a rewarding one too. This is the end (or is it...?).
+
+<details>
+    <summary>Example: Pseudocode</summary>
+
+The pseudocode for the example method is:
+
+![](imgs/pseudocode_example.png)
+</details>
 
 ## Appendix: Data Flow Analysis
 Data flow analysis features prominently in static program analysis. It answers questions about how data propagates throughout the program by modelling the effects of certain elements, from instructions, via basic blocks and functions, to the entire program. For simplicity, we'll confine our discussion to intraprocedural analysis—analysis of functions and smaller units.
