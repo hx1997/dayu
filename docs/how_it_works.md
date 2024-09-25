@@ -21,7 +21,7 @@ function foo() {
 This stage simply parses Panda Assembly, extracts bytecode instructions, and puts them into dayu's internal structures (e.g., an `NAddressCode` for each instruction). Subsequent analysis and translation will be performed on these internal structures only.
 
 <details>
-    <summary>Example: Raw IR</summary>
+    <summary><b>Example: Raw IR</b></summary>
 
 The Raw IR for the example method is:
 
@@ -62,7 +62,7 @@ In order to keep analysis easy, NACs follow a particular format at LLIR and MLIR
 Any manipulation in Stages 2 and 3 is carried out carefully so as not to break these constraints, and many manipulations presume that these constraints hold true.  
 
 <details>
-    <summary>Example: LLIR</summary>
+    <summary><b>Example: LLIR</b></summary>
 
 The LLIR for the example method is:
 
@@ -102,7 +102,7 @@ a = b
 LVA, DCE, and PO are executed repeatedly because after each iteration, some NACs may be optimized away and new dead code or optimizable patterns may emerge. We stop once no code changes after an iteration.
 
 <details>
-    <summary>Example: MLIR</summary>
+    <summary><b>Example: MLIR</b></summary>
 
 The MLIR for the example method is:
 
@@ -131,7 +131,7 @@ The astute reader may have noticed that the first NAC is now useless and can be 
 We also perform unconstrained PO here.
 
 <details>
-    <summary>Example: HLIR</summary>
+    <summary><b>Example: HLIR</b></summary>
 
 The HLIR for the example method is:
 
@@ -169,7 +169,7 @@ Also done in Stage 5 are variable allocation, which renames registers into varia
 Congratulations! You've arrived at the destination: pseudocode. It's been a tiring journey, but (hopefully) a rewarding one too. This is the end (or is it...?).
 
 <details>
-    <summary>Example: Pseudocode</summary>
+    <summary><b>Example: Pseudocode</b></summary>
 
 The pseudocode for the example method is:
 

@@ -21,7 +21,7 @@ function foo() {
 本阶段的工作是解析 Panda Assembly 反汇编结果，从中提取出各条指令，并将指令存入内部的结构体中（每条指令放入一个 `NAddressCode` 中）。后续的分析和翻译只会基于这些内部结构开展。
 
 <details>
-    <summary>示例：原始 IR</summary>
+    <summary><b>示例：原始 IR</b></summary>
 
 示例函数的原始 IR 形式如下：
 
@@ -62,7 +62,7 @@ function foo() {
 阶段 2 和阶段 3 的操作都特别注意不会违背上述的限制，代码中许多操作也默认以上述限制为前提。
 
 <details>
-    <summary>示例：低级 IR</summary>
+    <summary><b>示例：低级 IR</b></summary>
 
 示例函数的低级 IR 形式如下：
 
@@ -102,7 +102,7 @@ a = b
 活跃变量分析、死代码消除和窥孔优化会循环多次执行，因为每执行一遍，都可能有 NAC 被删除，从而可能产生新的死代码或可优化的模式。一旦执行完某一遍后代码没有发生改变，就停止循环。
 
 <details>
-    <summary>示例：中级 IR</summary>
+    <summary><b>示例：中级 IR</b></summary>
 
 示例函数的中级 IR 形式如下：
 
@@ -131,7 +131,7 @@ acc = acc + 1
 本阶段还进行不受限的窥孔优化，此处不赘述。
 
 <details>
-    <summary>示例：高级 IR</summary>
+    <summary><b>示例：高级 IR</b></summary>
 
 示例函数的高级 IR 形式如下：
 
@@ -169,7 +169,7 @@ if (...) {
 到这里，我们就得到最终的伪代码了。
 
 <details>
-    <summary>示例：伪代码</summary>
+    <summary><b>示例：伪代码</b></summary>
 
 示例函数的伪代码如下：
 
