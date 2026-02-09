@@ -1,6 +1,7 @@
 from ark.abcfield.field_tag import FieldTag
 from ark.abcstring import String
 from ark.tagged_value import TaggedValue
+import logging
 
 
 class FieldTaggedValue(TaggedValue):
@@ -17,14 +18,14 @@ class FieldTaggedValue(TaggedValue):
             return self._bin_reader.read_u32()
         elif self.tag is FieldTag.RUNTIME_ANNOTATIONS:
             # TODO: implement
-            print(f'Warning: FieldTag of type {self.tag.name} not implemented yet')
+            logging.getLogger(__name__).warning('FieldTag of type %s not implemented yet', self.tag.name)
         elif self.tag is FieldTag.ANNOTATIONS:
             # TODO: implement
-            print(f'Warning: FieldTag of type {self.tag.name} not implemented yet')
+            logging.getLogger(__name__).warning('FieldTag of type %s not implemented yet', self.tag.name)
         elif self.tag is FieldTag.RUNTIME_TYPE_ANNOTATION:
             # TODO: implement
-            print(f'Warning: FieldTag of type {self.tag.name} not implemented yet')
+            logging.getLogger(__name__).warning('FieldTag of type %s not implemented yet', self.tag.name)
         elif self.tag is FieldTag.TYPE_ANNOTATION:
             # TODO: implement
-            print(f'Warning: FieldTag of type {self.tag.name} not implemented yet')
+            logging.getLogger(__name__).warning('FieldTag of type %s not implemented yet', self.tag.name)
 

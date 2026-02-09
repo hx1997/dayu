@@ -1,3 +1,4 @@
+import logging
 import sys
 
 from decompile.config import DecompilerConfig, DecompileGranularity, DecompileOutputLevel
@@ -250,7 +251,7 @@ class Decompiler:
 
     def print_ir(self, method: IRMethod):
         if self.decompiled_ir_level is DecompileOutputLevel.PSEUDOCODE:
-            print('error: only IR can be printed', file=sys.stderr, flush=True)
+            logging.getLogger(__name__).error('Only IR can be printed')
         else:
             for block in method.blocks:
                 for insn in block.insns:
@@ -258,7 +259,7 @@ class Decompiler:
 
     def print_pseudocode(self, method: IRMethod):
         if self.decompiled_ir_level is not DecompileOutputLevel.PSEUDOCODE:
-            print('error: only pseudocode can be printed', file=sys.stderr, flush=True)
+            logging.getLogger(__name__).error('Only pseudocode can be printed')
         else:
             PrintPcode().run_on_method(method)
 

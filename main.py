@@ -1,10 +1,14 @@
 import argparse
+import logging
 import sys
 
 from ark.abcreader import AbcReader
 from decompile.config import DecompilerConfig, DecompileGranularity, DecompileOutputLevel
 from decompile.decompiler import Decompiler
 from pandasm.reader import PandasmReader
+
+
+logger = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -37,7 +41,7 @@ def print_names(args, abcfile, pafile):
 
     if args.print_methods_in_class:
         if args.abc:
-            print('error: parsing methods in abc files not implemented yet', file=sys.stderr)
+            logger.error('Parsing methods in abc files not implemented yet')
             # print(f'Methods in class {args.print_methods_in_class} from file {args.abc}:')
             # clz = abcfile.get_class_by_name(args.print_methods_in_class)
             # for method in clz.methods:
@@ -60,16 +64,16 @@ def decompile(args, abcfile, pafile):
     if args.decompile_method:
         num_decompile_args += 1
     if num_decompile_args > 1:
-        print('error: please specify only one of -dmo, -dc, or -dme', file=sys.stderr)
+        logger.error('Please specify only one of -dmo, -dc, or -dme')
         exit(-1)
 
     if num_decompile_args > 0:
         if not abcfile:
-            print('error: decompilation requires abc file, please specify', file=sys.stderr)
+            logger.error('Decompilation requires abc file, please specify')
             exit(-1)
 
         if not pafile:
-            print('error: decompilation requires Panda Assembly, please specify', file=sys.stderr)
+            logger.error('Decompilation requires Panda Assembly, please specify')
             exit(-1)
     else:
         return
@@ -124,9 +128,10 @@ def decompile(args, abcfile, pafile):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
     args = parse_args()
     if not args.abc and not args.pa:
-        print('error: no input file', file=sys.stderr)
+        logger.error('No input file')
         exit(-1)
 
     abcfile, pafile = None, None

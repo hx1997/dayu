@@ -1,6 +1,7 @@
 from ark.abcclass.class_tag import ClassTag
 from ark.abcstring import String
 from ark.tagged_value import TaggedValue
+import logging
 
 
 class ClassTaggedValue(TaggedValue):
@@ -19,16 +20,16 @@ class ClassTaggedValue(TaggedValue):
             return self._bin_reader.read_u8()
         elif self.tag is ClassTag.RUNTIME_ANNOTATION:
             # TODO: implement
-            print(f'Warning: ClassTag of type {self.tag.name} not implemented yet')
+            logging.getLogger(__name__).warning('ClassTag of type %s not implemented yet', self.tag.name)
         elif self.tag is ClassTag.ANNOTATION:
             # TODO: implement
-            print(f'Warning: ClassTag of type {self.tag.name} not implemented yet')
+            logging.getLogger(__name__).warning('ClassTag of type %s not implemented yet', self.tag.name)
         elif self.tag is ClassTag.RUNTIME_TYPE_ANNOTATION:
             # TODO: implement
-            print(f'Warning: ClassTag of type {self.tag.name} not implemented yet')
+            logging.getLogger(__name__).warning('ClassTag of type %s not implemented yet', self.tag.name)
         elif self.tag is ClassTag.TYPE_ANNOTATION:
             # TODO: implement
-            print(f'Warning: ClassTag of type {self.tag.name} not implemented yet')
+            logging.getLogger(__name__).warning('ClassTag of type %s not implemented yet', self.tag.name)
         elif self.tag is ClassTag.SOURCE_FILE:
             pos = self._bin_reader.io.tell()
             source_file = String.read_string_with_pos_restore(self._bin_reader, self._bin_reader.read_u32()).data

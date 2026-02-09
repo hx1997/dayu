@@ -1,4 +1,5 @@
 from copy import copy
+import logging
 
 from decompile.dec_pass import Pass
 from decompile.ir.basicblock import IRBlock
@@ -32,7 +33,12 @@ class RawIR2LLIR(Pass):
                 else:
                     nac = NAddressCode(insn.op, insn.args, NAddressCodeType.UNKNOWN, label_name=insn.label)
                     builder.insert(nac)
-                    print(f'[{self.__class__.__name__}] warning: UNKNOWN NAC "{insn.op}" encountered in method {method.name}. Analysis may be wrong!')
+                    logging.getLogger(__name__).warning(
+                        '[%s] UNKNOWN NAC "%s" encountered in method %s. Analysis may be wrong!',
+                        self.__class__.__name__,
+                        insn.op,
+                        method.name
+                    )
 
         # print(f'{method.name}:')
         # for nac in irblock.insns:

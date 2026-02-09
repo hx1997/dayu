@@ -1,12 +1,15 @@
 from input_file import DecompilerInputFile
 from io import StringIO
 from enum import IntEnum, auto
+import logging
 
 from common.simple_lexer import SimpleLexer
 from pandasm.field import PandasmField
 from pandasm.insn import PandasmInsn
 from pandasm.method import PandasmMethod
 from pandasm.pa_class import PandasmClass
+
+logger = logging.getLogger(__name__)
 
 
 class PAReaderState(IntEnum):
@@ -87,10 +90,10 @@ class PandasmFile(DecompilerInputFile):
                 elif state is PAReaderState.PRE_STRING:
                     state = self.__process_pre_string()
                 elif state is PAReaderState.ERROR:
-                    print(f'{self.__class__.__name__}: error encountered when reading pandasm file')
+                    logger.error('%s: error encountered when reading pandasm file', self.__class__.__name__)
                     break
                 else:
-                    print(f'{self.__class__.__name__}: unexpected state {state.name}')
+                    logger.error('%s: unexpected state %s', self.__class__.__name__, state.name)
                     break
             except StopIteration:
                 # StopIteration means EOF was encountered when trying to read next token
