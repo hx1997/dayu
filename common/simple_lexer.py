@@ -42,7 +42,10 @@ class SimpleLexer(Lexer):
             self.cur_line += 1
 
     def next_token(self):
-        return next(self.token_iterator)
+        tok = next(self.token_iterator)
+        if tok and tok[0] == '\ufeff':
+            tok = tok.lstrip('\ufeff')
+        return tok
 
     def eat(self, token):
         return self.next_token() == token

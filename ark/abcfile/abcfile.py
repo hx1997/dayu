@@ -1,4 +1,5 @@
 import typing
+import logging
 from io import BytesIO
 
 from ark.abcclass.abcclass import Class
@@ -16,6 +17,7 @@ class AbcFile(DecompilerInputFile):
     def __init__(self, buf):
         self._io = BytesIO(buf)
         self._bin_reader = BinaryReader(self._io)
+        self._buf_len = len(buf)
         self.header: AbcHeader = self.read_header()
         self.version = self.header.get_version(self.header.version)
         self.class_idxs: ClassIndex = ClassIndex(self._bin_reader, self.header.num_classes, self.header.class_idx_off)
@@ -23,9 +25,8 @@ class AbcFile(DecompilerInputFile):
         # this is a dict that maps a module record to its declaring class,
         # so that we know which class this module record belongs to
         self._modulerecord_literalarr_offs = self.read_modulerecord_literalarr_offs()
-        self.literalarray_idxs: LiteralArrayIndex = LiteralArrayIndex(self._bin_reader, self.header.num_literalarrays,
-                                                                      self.header.literalarray_idx_off)
-        self.literalarrays = self.read_literalarrays()
+        literalarray_offsets = self._get_literalarray_offsets()
+        self.literalarrays = self.read_literalarrays(literalarray_offsets)
 
     def read_header(self):
         raise Exception("Do not use this class directly. Use AbcReader.from_{file,buffer}() to create an instance.")
@@ -33,9 +34,55 @@ class AbcFile(DecompilerInputFile):
     def read_classes(self):
         raise Exception("Do not use this class directly. Use AbcReader.from_{file,buffer}() to create an instance.")
 
-    def read_literalarrays(self):
+    def _get_literalarray_offsets(self):
+        num_literalarrays = self.header.num_literalarrays
+        literalarray_idx_off = self.header.literalarray_idx_off
+
+        if self._is_valid_literalarray_index(num_literalarrays, literalarray_idx_off):
+            self.literalarray_idxs = LiteralArrayIndex(self._bin_reader, num_literalarrays, literalarray_idx_off)
+            return self._normalize_literalarray_offsets(self.literalarray_idxs.offsets)
+
+        # Fallback: some abc versions deprecate literalarray index section.
+        # Use moduleRecordIdx offsets from class fields if available.
+        logging.getLogger(__name__).warning(
+            '%s: invalid literalarray index section (num=%s, off=%s); falling back to moduleRecordIdx offsets',
+            self.__class__.__name__, num_literalarrays, literalarray_idx_off
+        )
+        self.literalarray_idxs = None
+        return self._normalize_literalarray_offsets(self._modulerecord_literalarr_offs.keys())
+
+    def _is_valid_literalarray_index(self, num_literalarrays, literalarray_idx_off):
+        if num_literalarrays is None or literalarray_idx_off is None:
+            return False
+        # 0xFFFFFFFF is commonly used as an invalid/sentinel value
+        if num_literalarrays in (0, 0xFFFFFFFF) or literalarray_idx_off in (0, 0xFFFFFFFF):
+            return False
+        if num_literalarrays < 0 or literalarray_idx_off < 0:
+            return False
+        bytes_needed = num_literalarrays * 4
+        if literalarray_idx_off + bytes_needed > self._buf_len:
+            return False
+        return True
+
+    def _normalize_literalarray_offsets(self, offsets):
+        normalized = []
+        seen = set()
+        for off in offsets:
+            if off is None:
+                continue
+            if off in (0, 0xFFFFFFFF):
+                continue
+            if off < 0 or off >= self._buf_len:
+                continue
+            if off in seen:
+                continue
+            seen.add(off)
+            normalized.append(off)
+        return normalized
+
+    def read_literalarrays(self, offsets):
         literalarrays = []
-        for offset in self.literalarray_idxs.offsets:
+        for offset in offsets:
             if offset in self._modulerecord_literalarr_offs:
                 literalarray = ModuleRecordLiteralArray(self._bin_reader,
                                                               self._modulerecord_literalarr_offs[offset], offset)

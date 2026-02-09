@@ -17,11 +17,20 @@ class IRModuleContext:
                 class_name = litarr.declaring_class.name
                 pandasm_class_name = self._abc_class_name_to_pandasm_class_name(class_name)
                 for regular_import in litarr.regular_imports:
-                    requested_module = litarr.module_requests[regular_import.module_request_idx]
-                    self.module_requests[pandasm_class_name].append({
+                    if regular_import.module_request_idx < len(litarr.module_requests):
+                        requested_module = litarr.module_requests[regular_import.module_request_idx]
+                    else:
+                        requested_module = f'__unknown_module_request_{regular_import.module_request_idx}'
+
+                    target_list = self.module_requests[pandasm_class_name]
+                    target_list.append({
                         'regular_import': regular_import,
                         'requested_module': requested_module
                     })
+
+                alias = f'&{pandasm_class_name}&'
+                if alias not in self.module_requests:
+                    self.module_requests[alias] = self.module_requests[pandasm_class_name]
 
     def _abc_class_name_to_pandasm_class_name(self, abc_class_name):
         if not abc_class_name.startswith('L') or not abc_class_name.endswith(';'):

@@ -410,7 +410,14 @@ class InsnLifter:
         external_module_no = int(insn.args[1].value, 16)
         class_name = insn.parent_block.parent_method.parent_class.name
         this_module = insn.parent_block.parent_method.parent_class.parent_module
-        external_module_name = this_module.ctx.module_requests[class_name][external_module_no]
+        module_requests = this_module.ctx.module_requests.get(class_name)
+        if not module_requests or external_module_no >= len(module_requests):
+            # Fallback: module request info may be missing or class names may be aliased
+            placeholder = PandasmInsnArgument('module', f'__unknown_module_{external_module_no}')
+            builder.create_assign(placeholder, label=insn.label, extra_info=['missing_module_request', class_name, str(external_module_no)])
+            return
+
+        external_module_name = module_requests[external_module_no]
 
         regular_import = external_module_name['regular_import']
         import_name = PandasmInsnArgument('module', regular_import.import_name)
