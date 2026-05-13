@@ -1,9 +1,7 @@
 from decompile.ir.basicblock import IRBlock
-from decompile.ir.expr import ExprArg
 from decompile.ir.method import IRMethod
-from decompile.ir.nac import NAddressCodeType, NAddressCode
+from decompile.ir.nac import NAddressCodeType
 from decompile.method_pass import MethodPass
-from pandasm.insn import PandasmInsnArgument
 
 
 class DeadCodeElimination(MethodPass):
@@ -31,15 +29,7 @@ class DeadCodeElimination(MethodPass):
             if insn.type == NAddressCodeType.ASSIGN:
                 if eliminate_dead_code:
                     self.analyze_assign(insn, live_vars)
-                live_vars = self.update_live_vars_for_assign(insn, live_vars)
-            elif insn.type in [NAddressCodeType.UNCOND_JUMP, NAddressCodeType.UNCOND_THROW]:
-                live_vars = self.update_live_vars_for_uncond_jump_throw(insn, live_vars)
-            elif insn.type in [NAddressCodeType.COND_JUMP, NAddressCodeType.COND_THROW]:
-                live_vars = self.update_live_vars_for_cond_jump_throw(insn, live_vars)
-            elif insn.type == NAddressCodeType.RETURN:
-                live_vars = self.update_live_vars_for_return(insn, live_vars)
-            elif insn.type == NAddressCodeType.CALL:
-                live_vars = self.update_live_vars_for_call(insn, live_vars)
+            live_vars = self.update_live_vars(insn, live_vars)
             if insn == stop_after_insn:
                 break
 
@@ -52,7 +42,7 @@ class DeadCodeElimination(MethodPass):
 
         return live_vars
 
-    def analyze_assign(self, insn: NAddressCode, live_vars: set):
+    def analyze_assign(self, insn, live_vars: set):
         # if the defined variable is not live at this point (i.e. it's not used after being defined),
         # is not a lexical variable,
         # and if it doesn't involve a reference object (see following example), eliminate it
@@ -61,71 +51,12 @@ class DeadCodeElimination(MethodPass):
         # the left-hand side may not be subsequently used in this method, but since it's a reference,
         # the location pointed to by reg:v0 could be accessible outside the method, and therefore
         # reg:v0['xxx'], too, could be used elsewhere outside this method, so optimizing it would be wrong
-        if insn.args[0] not in live_vars and insn.args[0].type != 'lexvar' and not insn.args[0].ref_obj:
+        dst = insn.get_defs()[0]
+        if dst not in live_vars and dst.type != 'lexvar' and not dst.ref_obj:
             # print(f'{insn} is dead code')
             insn.erase_from_parent()
 
-    def update_live_vars_for_assign(self, insn: NAddressCode, live_vars: set):
-        vars_def = {insn.args[0]}
-        vars_use = {insn.args[1]}
-        if insn.args[0].ref_obj:
-            vars_use.add(insn.args[0].ref_obj)
-        if insn.args[1].ref_obj:
-            vars_use.add(insn.args[1].ref_obj)
-        # for nested ExprArg
-        for arg in insn.args[1:]:
-            if isinstance(arg, ExprArg):
-                vars_use.update(arg.get_used_args())
-        if len(insn.args) == 3:
-            vars_use.add(insn.args[2])
-            if insn.args[2].ref_obj:
-                vars_use.add(insn.args[2].ref_obj)
-        live_vars = live_vars.difference(vars_def).union(vars_use)
-        return live_vars
-
-    def update_live_vars_for_uncond_jump_throw(self, insn: NAddressCode, live_vars: set):
-        var_def = set()
-        vars_use = {insn.args[0]}
-        if insn.args[0].ref_obj:
-            vars_use.add(insn.args[0].ref_obj)
-        live_vars = live_vars.difference(var_def).union(vars_use)
-        return live_vars
-
-    def update_live_vars_for_cond_jump_throw(self, insn: NAddressCode, live_vars: set):
-        var_def = set()
-        vars_use = {insn.args[0], insn.args[1]}
-        if insn.args[0].ref_obj:
-            vars_use.add(insn.args[0].ref_obj)
-        if insn.args[1].ref_obj:
-            vars_use.add(insn.args[1].ref_obj)
-        if len(insn.args) == 3:
-            vars_use.add(insn.args[2])
-            if insn.args[2].ref_obj:
-                vars_use.add(insn.args[2].ref_obj)
-        live_vars = live_vars.difference(var_def).union(vars_use)
-        return live_vars
-
-    def update_live_vars_for_return(self, insn: NAddressCode, live_vars: set):
-        var_def = set()
-        vars_use = {insn.args[0]}
-        if insn.args[0].ref_obj:
-            vars_use.add(insn.args[0].ref_obj)
-        live_vars = live_vars.difference(var_def).union(vars_use)
-        return live_vars
-
-    def update_live_vars_for_call(self, insn: NAddressCode, live_vars: set):
-        var_def = {insn.args[0]}
-        vars_use = set()
-        if insn.args[0].ref_obj:
-            vars_use.add(insn.args[0].ref_obj)
-
-        for arg in insn.args[1:]:
-            vars_use.add(arg)
-            # for nested ExprArg
-            if isinstance(arg, ExprArg):
-                vars_use.update(arg.get_used_args())
-            if arg.ref_obj:
-                vars_use.add(arg.ref_obj)
-
-        live_vars = live_vars.difference(var_def).union(vars_use)
-        return live_vars
+    def update_live_vars(self, insn, live_vars: set):
+        vars_def = set(insn.get_defs())
+        vars_use = set(insn.get_uses())
+        return live_vars.difference(vars_def).union(vars_use)
