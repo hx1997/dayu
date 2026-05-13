@@ -1,4 +1,5 @@
 import logging
+import re
 import sys
 
 from decompile.config import DecompilerConfig, DecompileGranularity, DecompileOutputLevel
@@ -134,8 +135,9 @@ class Decompiler:
         self.decompiled_ir_level = DecompileOutputLevel.LOW_LEVEL_IR
         if self.config.output_level is DecompileOutputLevel.LOW_LEVEL_IR:
             if self.config.view_cfg:
-                self.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
-                print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
+                cfg_path = self._safe_cfg_path(method)
+                self.write_cfg_to_file(method, cfg_path, True)
+                print(f'CFG saved to {cfg_path}.png', end='\n')
             return method
 
     def decompile_method_above_llir(self, method: IRMethod):
@@ -146,24 +148,27 @@ class Decompiler:
         self.decompiled_ir_level = DecompileOutputLevel.MEDIUM_LEVEL_IR
         if self.config.output_level is DecompileOutputLevel.MEDIUM_LEVEL_IR:
             if self.config.view_cfg:
-                self.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
-                print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
+                cfg_path = self._safe_cfg_path(method)
+                self.write_cfg_to_file(method, cfg_path, True)
+                print(f'CFG saved to {cfg_path}.png', end='\n')
             return method
 
         self.mlir_to_hlir(method)
         self.decompiled_ir_level = DecompileOutputLevel.HIGH_LEVEL_IR
         if self.config.output_level is DecompileOutputLevel.HIGH_LEVEL_IR:
             if self.config.view_cfg:
-                self.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
-                print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
+                cfg_path = self._safe_cfg_path(method)
+                self.write_cfg_to_file(method, cfg_path, True)
+                print(f'CFG saved to {cfg_path}.png', end='\n')
             return method
 
         self.hlir_to_pseudocode(method)
         self.decompiled_ir_level = DecompileOutputLevel.PSEUDOCODE
         if self.config.output_level is DecompileOutputLevel.PSEUDOCODE:
             if self.config.view_cfg:
-                self.write_cfg_to_file(method, f'cfg/cfg_{method.name}', True)
-                print(f'CFG saved to cfg/cfg_{method.name}.png', end='\n')
+                cfg_path = self._safe_cfg_path(method)
+                self.write_cfg_to_file(method, cfg_path, True)
+                print(f'CFG saved to {cfg_path}.png', end='\n')
             return method
 
         return method
@@ -247,6 +252,11 @@ class Decompiler:
                 ControlFlowStructuringOld().run_on_method(method)
             else:
                 ControlFlowStructuring().run_on_method(method)
+
+    @staticmethod
+    def _safe_cfg_path(method: IRMethod):
+        safe_name = re.sub(r'[\\/:*?"<>|\s]', '_', method.name)
+        return f'cfg/cfg_{safe_name}'
 
     @staticmethod
     def write_cfg_to_file(method: IRMethod, output_path, view=False):
