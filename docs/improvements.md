@@ -72,8 +72,8 @@ This issue has been fixed. CFG output paths are now sanitized before being passe
 
 ## Testing & Robustness
 
-### 16. No test suite [Pending]
-There are no tests in the repository. Given the complexity of the multi-stage IR pipeline, even a small set of golden-output tests (input `.abc` + expected pseudocode) would catch regressions when passes are modified. The `examples/` directory already contains suitable sample files.
+### 16. No test suite [Done]
+This issue has been fixed. The repository now has a `unittest`-based regression suite under `tests/`, built around the bundled example inputs in `examples/`. Coverage now includes golden decompilation checks across both bundled datasets, CLI output-file handling, bundled input loading, the missing-method error path, and small parser/dataflow unit tests.
 
 ### 17. Dataflow analyses rebuild state from scratch on every call [Pending]
 Both `ReachingDefinitions` and `CopyPropagation` iterate over all blocks and instructions to build their initial sets at the start of every invocation. Since these analyses are called repeatedly in the MLIR fixed-point loop, incremental invalidation — re-analyzing only blocks whose predecessors changed — could significantly speed up decompilation of large methods.

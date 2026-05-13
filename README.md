@@ -150,6 +150,15 @@ function __assert_defined__(obj) {
 } 
 ```
 
+## Testing
+Run the regression suite with:
+
+```shell
+python -m unittest discover -s tests
+```
+
+The current suite covers both bundled example datasets in `examples/`, including golden decompilation checks for `com.example.myapplication.entry.ets.pages.Index.foo` and `ohos.samples.image.entry@photomodify.ets.components.util.ImageUtil.getContainSize`, CLI output-file handling, bundled input loading, the missing-method error path, and small unit tests for Panda Assembly parsing plus def-use, reaching-definitions, and live-variable analysis.
+
 ## Documentation
 [Under the Hood - how dayu works](docs/how_it_works.md)
 
