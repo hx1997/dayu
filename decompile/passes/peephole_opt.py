@@ -49,6 +49,8 @@ class PeepholeOptimization(MethodPass):
                 if insn.type not in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL] or block_insns_copy[idx - 1].type != NAddressCodeType.ASSIGN:
                     self.eliminate_stld_lexvar_pattern(idx, insn, block_insns_copy)
                     continue
+                if insn.type == NAddressCodeType.CALL:
+                    continue
             if block_insns_copy[idx - 1] not in block_insns_copy[idx - 1].parent_block.insns:
                 # the previous instruction could have already been eliminated in the last iteration, in which case
                 # if we proceed to the following cases we'll be looking at a non-existent instruction
