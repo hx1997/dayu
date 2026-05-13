@@ -1,4 +1,5 @@
 import argparse
+from contextlib import nullcontext, redirect_stdout
 import logging
 import sys
 
@@ -22,6 +23,7 @@ def parse_args():
     parser.add_argument('-abc', type=str, help='specify the input abc file')
     parser.add_argument('-pa', type=str, help='specify the input text-form Panda Assembly file')
     parser.add_argument('-O', '--output-level', type=str, help='output decompiled code at the specified level (possible values: llir, mlir, hlir, pcode, default: pcode)')
+    parser.add_argument('-o', '--output-file', type=str, help='write printed output to the specified file instead of stdout')
     args = parser.parse_args()
     return args
 
@@ -141,5 +143,11 @@ if __name__ == '__main__':
     if args.pa:
         pafile = PandasmReader.from_file(args.pa)
 
-    print_names(args, abcfile, pafile)
-    decompile(args, abcfile, pafile)
+    output_context = nullcontext(sys.stdout)
+    if args.output_file:
+        output_context = open(args.output_file, 'w', encoding='utf-8')
+
+    with output_context as output_stream:
+        with redirect_stdout(output_stream):
+            print_names(args, abcfile, pafile)
+            decompile(args, abcfile, pafile)

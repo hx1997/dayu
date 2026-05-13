@@ -13,7 +13,7 @@ See "Examples" section below for an example use.
 
 ```
 usage: main.py [-h] [-pc] [-pmc CLASS] [-dmo] [-dc DECOMPILE_CLASS] [-dme DECOMPILE_METHOD] [-cfg] [-abc ABC] [-pa PA]
-               [-O OUTPUT_LEVEL]
+               [-O OUTPUT_LEVEL] [-o OUTPUT_FILE]
 
 options:
   -h, --help            show this help message and exit
@@ -33,6 +33,8 @@ options:
   -O OUTPUT_LEVEL, --output-level OUTPUT_LEVEL
                         output decompiled code at the specified level (possible values: llir, mlir, hlir, pcode,
                         default: pcode)
+    -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                                                write printed output to the specified file instead of stdout
 ```
 
 ### In Python code
