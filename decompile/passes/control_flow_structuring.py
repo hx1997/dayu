@@ -4,7 +4,7 @@ from ordered_set import OrderedSet
 
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.method import IRMethod
-from decompile.ir.nac import NAddressCode, NAddressCodeType
+from decompile.ir.nac import NAddressCodeType, UnknownNAC
 from decompile.method_pass import MethodPass
 from decompile.passes.cfg_utils import CFGUtils
 from enum import IntEnum, auto
@@ -228,8 +228,8 @@ class ControlFlowStructuring(MethodPass):
             # the condition for entering the loop
             cond_jump_insn.invert_relational_operation()
 
-            new_while_text = f'while ({cond_jump_insn.args[0]} {cond_jump_insn.op} {cond_jump_insn.args[1]})' + ' {'
-            new_while = NAddressCode(new_while_text, [], nac_type=NAddressCodeType.UNKNOWN, label_name=cond_jump_insn.label)
+            new_while_text = f'while ({cond_jump_insn.cond1} {cond_jump_insn.op} {cond_jump_insn.cond2})' + ' {'
+            new_while = UnknownNAC(new_while_text, [], label_name=cond_jump_insn.label)
             cond_jump_insn.erase_from_parent()
             node.insert_insn(new_while)
 
@@ -251,14 +251,14 @@ class ControlFlowStructuring(MethodPass):
                     for insn in succ.insns:
                         # don't insert the jump back to loop header
                         if insn.type is NAddressCodeType.UNCOND_JUMP:
-                            if insn.args[0].value == cond_jump_insn_label:
+                            if insn.target.value == cond_jump_insn_label:
                                 continue
                         node.insert_insn(insn)
 
                     vis.add(succ)
                 cur_block = cur_block.successors[0]
 
-            node.insert_insn(NAddressCode('}', [], nac_type=NAddressCodeType.UNKNOWN))
+            node.insert_insn(UnknownNAC('}', []))
             return node
         elif rtype is RegionType.Block:
             # find region entry block
@@ -300,14 +300,14 @@ class ControlFlowStructuring(MethodPass):
 
             first_node = list(node_set)[0]
             new_while_text = 'do {'
-            new_while = NAddressCode(new_while_text, [], nac_type=NAddressCodeType.UNKNOWN, label_name=first_node.insns[0].label)
+            new_while = UnknownNAC(new_while_text, [], label_name=first_node.insns[0].label)
             node.insert_insn(new_while)
 
             for old_node in node_set:
                 for insn in old_node.insns:
                     node.insert_insn(insn)
 
-            node.insert_insn(NAddressCode('} while (true);', [], nac_type=NAddressCodeType.UNKNOWN))
+            node.insert_insn(UnknownNAC('} while (true);', []))
             return node
         elif rtype is RegionType.IfThen:
             # find the conditional node
@@ -316,7 +316,7 @@ class ControlFlowStructuring(MethodPass):
             for node in node_set:
                 if len(node.successors) == 2:
                     cond_node = node
-                    if parent_method.get_insn_by_label(node.insns[-1].args[-1].value).parent_block == node.successors[0]:
+                    if parent_method.get_insn_by_label(node.insns[-1].target.value).parent_block == node.successors[0]:
                         then_node = node.successors[1]
                     else:
                         then_node = node.successors[0]
@@ -336,19 +336,19 @@ class ControlFlowStructuring(MethodPass):
             # the condition for entering the branch
             cond_jump_insn.invert_relational_operation()
 
-            new_if_text = f'if ({cond_jump_insn.args[0]} {cond_jump_insn.op} {cond_jump_insn.args[1]})' + ' {'
-            new_if = NAddressCode(new_if_text, [], nac_type=NAddressCodeType.UNKNOWN, label_name=cond_jump_insn.label)
+            new_if_text = f'if ({cond_jump_insn.cond1} {cond_jump_insn.op} {cond_jump_insn.cond2})' + ' {'
+            new_if = UnknownNAC(new_if_text, [], label_name=cond_jump_insn.label)
             cond_jump_insn.erase_from_parent()
             node.insert_insn(new_if)
 
             for insn in then_node.insns:
                 # don't insert the jump out of the branch
                 if insn.type is NAddressCodeType.UNCOND_JUMP:
-                    if insn.args[0].value == cond_jump_insn_label:
+                    if insn.target.value == cond_jump_insn_label:
                         continue
                 node.insert_insn(insn)
 
-            node.insert_insn(NAddressCode('}', [], nac_type=NAddressCodeType.UNKNOWN))
+            node.insert_insn(UnknownNAC('}', []))
             return node
         elif rtype is RegionType.IfThenElse:
             # find the conditional node
@@ -357,7 +357,7 @@ class ControlFlowStructuring(MethodPass):
             for node in node_set:
                 if len(node.successors) == 2:
                     cond_node = node
-                    if parent_method.get_insn_by_label(node.insns[-1].args[-1].value).parent_block == node.successors[0]:
+                    if parent_method.get_insn_by_label(node.insns[-1].target.value).parent_block == node.successors[0]:
                         then_node = node.successors[1]
                         else_node = node.successors[0]
                     else:
@@ -378,8 +378,8 @@ class ControlFlowStructuring(MethodPass):
             # the condition for the then branch
             cond_jump_insn.invert_relational_operation()
 
-            new_if_text = f'if ({cond_jump_insn.args[0]} {cond_jump_insn.op} {cond_jump_insn.args[1]})' + ' {'
-            new_if = NAddressCode(new_if_text, [], nac_type=NAddressCodeType.UNKNOWN, label_name=cond_jump_insn.label)
+            new_if_text = f'if ({cond_jump_insn.cond1} {cond_jump_insn.op} {cond_jump_insn.cond2})' + ' {'
+            new_if = UnknownNAC(new_if_text, [], label_name=cond_jump_insn.label)
             cond_jump_insn.erase_from_parent()
             node.insert_insn(new_if)
 
@@ -389,7 +389,7 @@ class ControlFlowStructuring(MethodPass):
                     continue
                 node.insert_insn(insn)
 
-            node.insert_insn(NAddressCode('} else {', [], nac_type=NAddressCodeType.UNKNOWN))
+            node.insert_insn(UnknownNAC('} else {', []))
 
             for idx, insn in enumerate(else_node.insns):
                 # don't insert the jump out of the branch
@@ -397,7 +397,7 @@ class ControlFlowStructuring(MethodPass):
                     continue
                 node.insert_insn(insn)
 
-            node.insert_insn(NAddressCode('}', [], nac_type=NAddressCodeType.UNKNOWN))
+            node.insert_insn(UnknownNAC('}', []))
             return node
         else:
             return IRBlock(parent_method=parent_method)

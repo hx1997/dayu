@@ -7,7 +7,7 @@ from decompile.ir.builder import IRBuilder
 from decompile.ir.irclass import IRClass
 from decompile.ir.method import IRMethod
 from decompile.ir.module import IRModule
-from decompile.ir.nac import NAddressCode, NAddressCodeType
+from decompile.ir.nac import NAddressCodeType, UnknownNAC
 from pandasm.file import PandasmFile
 from pandasm.method import PandasmMethod
 from pandasm.pa_class import PandasmClass
@@ -46,7 +46,7 @@ class Pandasm2RawIR:
         builder = IRBuilder(ir_method.parent_class.parent_module)
         builder.set_insert_point(ir_block)
         for insn in pa_method.insns:
-            nac = NAddressCode(insn.mnemonic, insn.arguments if insn.arguments else insn.operands, NAddressCodeType.UNKNOWN, label_name=insn.label)
+            nac = UnknownNAC(insn.mnemonic, insn.arguments if insn.arguments else insn.operands, label_name=insn.label)
             builder.insert(nac)
 
         return ir_method

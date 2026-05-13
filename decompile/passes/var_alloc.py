@@ -1,6 +1,6 @@
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.method import IRMethod
-from decompile.ir.nac import NAddressCode, NAddressCodeType
+from decompile.ir.nac import NAddressCodeType, UnknownNAC
 from decompile.method_pass import MethodPass
 
 
@@ -78,5 +78,5 @@ class VariableAllocation(MethodPass):
         decl_vars = [var for var in decl_vars if not var.startswith('a')]
         if len(decl_vars) > 0:
             decl_stmt = f'let {", ".join(decl_vars)}'
-            declare_insn = NAddressCode(decl_stmt, [], nac_type=NAddressCodeType.UNKNOWN)
+            declare_insn = UnknownNAC(decl_stmt, [])
             entry_block.insert_insn(declare_insn, 0)
