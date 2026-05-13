@@ -41,9 +41,9 @@ class CopyPropagation(MethodPass):
 
         for copy_ in copies:
             if len(copy_.args) == 2:
-                copy_args = {copy_.args[0], copy_.args[1]}
+                copy_args = {copy_.dst, copy_.args[1]}
                 for definition in def_block:
-                    if definition.args[0] in copy_args:
+                    if definition.dst in copy_args:
                         # if for this copy, say x=y, either x or y is redefined in this block, then add it to kill set
                         kill_block.add(copy_)
                     # another case is instructions like acc = reg:v2["abc"], where the array access is treated as one
@@ -52,12 +52,12 @@ class CopyPropagation(MethodPass):
                     # the original value, i.e. killed
                     if copy_.args[1].ref_obj:
                         # if reg:v2 is redefined, add it to kill set
-                        if definition.args[0] == copy_.args[1].ref_obj:
+                        if definition.dst == copy_.args[1].ref_obj:
                             kill_block.add(copy_)
             elif len(copy_.args) >= 3:
                 copy_args = {*copy_.args}
                 for definition in def_block:
-                    if definition.args[0] in copy_args:
+                    if definition.dst in copy_args:
                         # if for this copy, say x=y+z, any of x, y and z is redefined in this block, add it to kill set
                         kill_block.add(copy_)
             # there could be nested ExprArgs on rhs, take any arguments in ExprArg into account
@@ -66,7 +66,7 @@ class CopyPropagation(MethodPass):
                 for arg in copy_.args[1:]:
                     if isinstance(arg, ExprArg):
                         vars_used_in_copy.update(arg.get_used_args())
-                if definition.args[0] in vars_used_in_copy:
+                if definition.dst in vars_used_in_copy:
                     kill_block.add(copy_)
 
         return gen_block, kill_block
@@ -99,10 +99,10 @@ class CopyPropagation(MethodPass):
                 # don't remove what we've just added
                 if copy == insn:
                     continue
-                if copy.args[0] == insn.args[0]:
+                if copy.dst == insn.dst:
                     gen_block.remove(copy)
                     continue
-                if copy.args[1] == insn.args[0]:
+                if copy.args[1] == insn.dst:
                     gen_block.remove(copy)
                     continue
                 # for nested ExprArg
@@ -110,26 +110,26 @@ class CopyPropagation(MethodPass):
                 for arg in copy.args[1:]:
                     if isinstance(arg, ExprArg):
                         vars_used_in_expr.extend(arg.get_used_args())
-                if insn.args[0] in vars_used_in_expr:
+                if insn.dst in vars_used_in_expr:
                     gen_block.remove(copy)
                     continue
                 # for copies like acc = reg:v2["abc"], where a subsequent redefinition of reg:v2 should cause a removal
-                if copy.args[1].ref_obj and insn.args[0] == copy.args[1].ref_obj:
+                if copy.args[1].ref_obj and insn.dst == copy.args[1].ref_obj:
                     gen_block.remove(copy)
                     continue
                 # for copies like reg:v2 = {}, a subsequent reg:v2["abc"] = acc should cause the removal of reg:v2
-                if insn.args[0].ref_obj and insn.args[0].ref_obj == copy.args[0]:
+                if insn.dst.ref_obj and insn.dst.ref_obj == copy.dst:
                     gen_block.remove(copy)
                     continue
                 # for three-argument ASSIGN case and the CALL case, take any additional arguments on rhs into account
                 if len(copy.args) >= 3:
                     extra_args = copy.args[2:]
-                    if insn.args[0] in extra_args:
+                    if insn.dst in extra_args:
                         gen_block.remove(copy)
                         continue
                     # for acc = reg:v0 + reg:v2["abc"]... does this ever show up? dunno, just playing safe here
                     for arg in extra_args:
-                        if arg.ref_obj and insn.args[0] == arg.ref_obj:
+                        if arg.ref_obj and insn.dst == arg.ref_obj:
                             gen_block.remove(copy)
                             continue
             except KeyError:
@@ -181,21 +181,21 @@ class CopyPropagation(MethodPass):
         def def_kills_copy(def_insn, copy_):
             try:
                 if len(copy_.args) == 2:
-                    copy_args = {copy_.args[0], copy_.args[1]}
-                    if def_insn.args[0] in copy_args:
+                    copy_args = {copy_.dst, copy_.args[1]}
+                    if def_insn.dst in copy_args:
                         return True
-                    if copy_.args[1].ref_obj and def_insn.args[0] == copy_.args[1].ref_obj:
+                    if copy_.args[1].ref_obj and def_insn.dst == copy_.args[1].ref_obj:
                         return True
                 elif len(copy_.args) >= 3:
                     copy_args = {*copy_.args}
-                    if def_insn.args[0] in copy_args:
+                    if def_insn.dst in copy_args:
                         return True
                 # nested ExprArg usage
                 vars_used_in_copy = set()
                 for arg in copy_.args[1:]:
                     if isinstance(arg, ExprArg):
                         vars_used_in_copy.update(arg.get_used_args())
-                if def_insn.args[0] in vars_used_in_copy:
+                if def_insn.dst in vars_used_in_copy:
                     return True
             except Exception:
                 return False
@@ -226,7 +226,7 @@ class CopyPropagation(MethodPass):
                     # same function, which changes the original semantics
                     if copy_.type == NAddressCodeType.CALL:
                         continue
-                    if copy_.args[0] in vars_use:
+                    if copy_.dst in vars_use:
                         # if copy is currently reaching this insn, attempt replacement
                         if copy_ in current_copies:
                             if self.replace_var_use(insn, copy_):
@@ -266,8 +266,8 @@ class CopyPropagation(MethodPass):
         vars_use = OrderedSet([insn.args[1]])
         if isinstance(insn.args[1], ExprArg):
             vars_use.update(insn.args[1].get_used_args())
-        if insn.args[0].ref_obj:
-            vars_use.add(insn.args[0].ref_obj)
+        if insn.dst.ref_obj:
+            vars_use.add(insn.dst.ref_obj)
         if insn.args[1].ref_obj:
             vars_use.add(insn.args[1].ref_obj)
         for arg in insn.args[1:]:
@@ -289,7 +289,7 @@ class CopyPropagation(MethodPass):
 
     def replace_var_use(self, insn: NAddressCode, copy_):
         are_all_args_replaced = True
-        var_to_replace, replace_with, copy_op, copy_comment = copy_.args[0], copy_.args[1:], copy_.op, copy_.comment
+        var_to_replace, replace_with, copy_op, copy_comment = copy_.dst, copy_.args[1:], copy_.op, copy_.comment
         if (self.constrained and replace_with[0].ref_obj) or (not self.constrained and var_to_replace == replace_with[0].ref_obj):
             # in cases like "acc = acc['xxx']", when var_to_replace == acc, and replace_with == acc['xxx'],
             # replacing results in infinite recursion ("acc['xxx'] = acc['xxx']['xxx'] and so on), so skip it
@@ -303,7 +303,7 @@ class CopyPropagation(MethodPass):
             return False
         if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL, NAddressCodeType.COND_JUMP, NAddressCodeType.COND_THROW]:
             for idx, arg in enumerate(insn.args):
-                if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL] and idx == 0 and var_to_replace == insn.args[0]:
+                if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL] and idx == 0 and var_to_replace == insn.dst:
                     # don't replace a definition, for example
                     #    v1 = v1 + 3
                     # if var_to_replace == v1, we should only replace v1 on the rhs, not on the lhs, but it's ok if
@@ -329,7 +329,7 @@ class CopyPropagation(MethodPass):
                             insn.replace_arg(idx, ExprArg(replace_with, 'call', copy_.op))
                 if arg.ref_obj and arg.ref_obj == var_to_replace:
                     if len(replace_with) == 1:
-                        insn.args[idx].ref_obj = replace_with[0]
+                        arg.ref_obj = replace_with[0]
                     else:
                         # this case means insn has a reference object (i.e. var_to_replace) and replace_with has more than one argument on rhs
                         # for example, insn is "v4 = acc['delete']" and replace_with represents a function call foo(...)
