@@ -8,19 +8,14 @@ from decompile.ir.nac import NAddressCode, NAddressCodeType
 from decompile.ir.insn_enum import mnemonic2lifter_map
 from decompile.ir.irclass import IRClass
 from decompile.ir.method import IRMethod
-from decompile.ir.module import IRModule
 from pandasm.method import PandasmMethod
 from pandasm.pa_class import PandasmClass
 from pandasm.reader import PandasmReader
 
 
 class RawIR2LLIR(Pass):
-    def __init__(self):
-        super().__init__()
-        self.module = IRModule()
-
     def run_on_method(self, method: IRMethod):
-        builder = IRBuilder(self.module)
+        builder = IRBuilder(method.parent_class.parent_module)
         for block in method.blocks:
             builder.set_insert_point(block)
             block_insns_copy = copy(block.insns)
