@@ -48,9 +48,11 @@ _RELATIONAL_OPS = {
 class NACBase:
     """Base class for all NAC instruction types.
 
-    During the migration period each typed subclass stores ``self.args`` as the
-    canonical mutable list and exposes named-field properties backed by it.
-    Phase 9 will flip to named fields as canonical and drop the list.
+    Each typed subclass stores named fields as canonical storage
+    (e.g. ``_dst``, ``_src``) and exposes both named-field properties
+    and a read-only ``args`` computed property for backward-compatible
+    iteration.  ``UnknownNAC`` is the sole exception — it keeps a real
+    mutable ``args`` list permanently.
     """
 
     # Subclasses set this as a class-level constant.
@@ -100,6 +102,11 @@ class NACBase:
         """Apply *fn(arg) -> arg* to every owned arg, replacing it in-place."""
         raise NotImplementedError
 
+    def replace_arg(self, idx, value):
+        """Replace the arg at position *idx* with *value*.
+        Used by CopyPropagation instead of ``insn.args[idx] = value``."""
+        raise NotImplementedError(f'{self.__class__.__name__}.replace_arg not implemented')
+
     # ------------------------------------------------------------------
     # Relational-operation helpers
     # ------------------------------------------------------------------
@@ -148,59 +155,71 @@ class AssignNAC(NACBase):
         super().__init__(parent_block=parent_block, label_name=label_name,
                          comment=comment, extra_info=extra_info)
         self.op = op
-        if src2 is not None:
-            self.args = [dst, src, src2]
-        else:
-            self.args = [dst, src]
+        self._dst = dst
+        self._src = src
+        self._src2 = src2
 
-    # Named-field properties backed by self.args (the canonical list during migration)
+    # Computed args property (read-only view of canonical named fields)
+
+    @property
+    def args(self):
+        if self._src2 is not None:
+            return [self._dst, self._src, self._src2]
+        return [self._dst, self._src]
+
+    # Named-field properties
 
     @property
     def dst(self):
-        return self.args[0]
+        return self._dst
 
     @dst.setter
     def dst(self, value):
-        self.args[0] = value
+        self._dst = value
 
     @property
     def src(self):
-        return self.args[1]
+        return self._src
 
     @src.setter
     def src(self, value):
-        self.args[1] = value
+        self._src = value
 
     @property
     def src2(self):
-        return self.args[2] if len(self.args) > 2 else None
+        return self._src2
 
     @src2.setter
     def src2(self, value):
-        if value is not None:
-            if len(self.args) > 2:
-                self.args[2] = value
-            else:
-                self.args.append(value)
-        else:
-            if len(self.args) > 2:
-                self.args.pop()
+        self._src2 = value
 
     def get_defs(self):
-        return [self.dst]
+        return [self._dst]
 
     def get_uses(self):
         uses = []
-        if self.dst.ref_obj:
-            uses.append(self.dst.ref_obj)
-        uses.extend(self._arg_uses(self.src))
-        if self.src2 is not None:
-            uses.extend(self._arg_uses(self.src2))
+        if self._dst.ref_obj:
+            uses.append(self._dst.ref_obj)
+        uses.extend(self._arg_uses(self._src))
+        if self._src2 is not None:
+            uses.extend(self._arg_uses(self._src2))
         return uses
 
+    def replace_arg(self, idx, value):
+        if idx == 0:
+            self._dst = value
+        elif idx == 1:
+            self._src = value
+        elif idx == 2:
+            self._src2 = value
+        else:
+            raise IndexError(f'AssignNAC has no arg at index {idx}')
+
     def remap_args(self, fn):
-        for i in range(len(self.args)):
-            self.args[i] = fn(self.args[i])
+        self._dst = fn(self._dst)
+        self._src = fn(self._src)
+        if self._src2 is not None:
+            self._src2 = fn(self._src2)
 
     def is_relational_operation(self):
         return self.op in _RELATIONAL_OPS
@@ -214,10 +233,10 @@ class AssignNAC(NACBase):
         return False
 
     def __str__(self):
-        if len(self.args) == 3:
-            s = f'{self.dst} = {self.src} {self.op} {self.src2}'
+        if self._src2 is not None:
+            s = f'{self._dst} = {self._src} {self.op} {self._src2}'
         else:
-            s = f'{self.dst} = {self.op + (" " if self.op else "")}{self.src}'
+            s = f'{self._dst} = {self.op + (" " if self.op else "")}{self._src}'
         return self.format_nac_str_with_label(s)
 
 
@@ -230,24 +249,34 @@ class UncondJumpNAC(NACBase):
                  parent_block=None, label_name='', comment='', extra_info=None):
         super().__init__(parent_block=parent_block, label_name=label_name,
                          comment=comment, extra_info=extra_info)
-        self.args = [target]
+        self._target = target
+
+    @property
+    def args(self):
+        return [self._target]
 
     @property
     def target(self):
-        return self.args[0]
+        return self._target
 
     @target.setter
     def target(self, value):
-        self.args[0] = value
+        self._target = value
 
     def get_uses(self):
-        return self._arg_uses(self.target)
+        return self._arg_uses(self._target)
+
+    def replace_arg(self, idx, value):
+        if idx == 0:
+            self._target = value
+        else:
+            raise IndexError(f'UncondJumpNAC has no arg at index {idx}')
 
     def remap_args(self, fn):
-        self.args[0] = fn(self.args[0])
+        self._target = fn(self._target)
 
     def __str__(self):
-        return self.format_nac_str_with_label(f'jump {self.target}')
+        return self.format_nac_str_with_label(f'jump {self._target}')
 
 
 class CondJumpNAC(NACBase):
@@ -260,51 +289,66 @@ class CondJumpNAC(NACBase):
         super().__init__(parent_block=parent_block, label_name=label_name,
                          comment=comment, extra_info=extra_info)
         self.op = op
-        if cond2 is not None:
-            self.args = [cond1, cond2, target]
-        else:
-            self.args = [cond1, target]
+        self._cond1 = cond1
+        self._cond2 = cond2
+        self._target = target
+
+    @property
+    def args(self):
+        if self._cond2 is not None:
+            return [self._cond1, self._cond2, self._target]
+        return [self._cond1, self._target]
 
     @property
     def cond1(self):
-        return self.args[0]
+        return self._cond1
 
     @cond1.setter
     def cond1(self, value):
-        self.args[0] = value
+        self._cond1 = value
 
     @property
     def cond2(self):
-        return self.args[1] if len(self.args) == 3 else None
+        return self._cond2
 
     @cond2.setter
     def cond2(self, value):
-        if len(self.args) == 3:
-            self.args[1] = value
-        elif value is not None:
-            # Promote from 2-arg to 3-arg form
-            old_target = self.args[1]
-            self.args = [self.args[0], value, old_target]
+        self._cond2 = value
 
     @property
     def target(self):
-        return self.args[-1]
+        return self._target
 
     @target.setter
     def target(self, value):
-        self.args[-1] = value
+        self._target = value
 
     def get_uses(self):
-        uses = self._arg_uses(self.cond1)
-        if self.cond2 is not None:
-            uses.extend(self._arg_uses(self.cond2))
+        uses = self._arg_uses(self._cond1)
+        if self._cond2 is not None:
+            uses.extend(self._arg_uses(self._cond2))
         # target is a label; include it for behavioural consistency with the old defuse.py
-        uses.extend(self._arg_uses(self.target))
+        uses.extend(self._arg_uses(self._target))
         return uses
 
+    def replace_arg(self, idx, value):
+        if idx == 0:
+            self._cond1 = value
+        elif idx == 1:
+            if self._cond2 is not None:
+                self._cond2 = value
+            else:
+                self._target = value
+        elif idx == 2:
+            self._target = value
+        else:
+            raise IndexError(f'CondJumpNAC has no arg at index {idx}')
+
     def remap_args(self, fn):
-        for i in range(len(self.args)):
-            self.args[i] = fn(self.args[i])
+        self._cond1 = fn(self._cond1)
+        if self._cond2 is not None:
+            self._cond2 = fn(self._cond2)
+        self._target = fn(self._target)
 
     def is_relational_operation(self):
         return self.op in _RELATIONAL_OPS
@@ -318,10 +362,10 @@ class CondJumpNAC(NACBase):
         return False
 
     def __str__(self):
-        if len(self.args) == 3:
-            s = f'if ({self.cond1} {self.op} {self.cond2}) jump {self.target}'
+        if self._cond2 is not None:
+            s = f'if ({self._cond1} {self.op} {self._cond2}) jump {self._target}'
         else:
-            s = f'if ({self.cond1}) jump {self.target}'
+            s = f'if ({self._cond1}) jump {self._target}'
         return self.format_nac_str_with_label(s)
 
 
@@ -334,52 +378,67 @@ class CallNAC(NACBase):
                  parent_block=None, label_name='', comment='', extra_info=None):
         super().__init__(parent_block=parent_block, label_name=label_name,
                          comment=comment, extra_info=extra_info)
-        self.args = [dst, func, *call_args]
+        self._dst = dst
+        self._func = func
+        self._call_args = list(call_args)
+
+    @property
+    def args(self):
+        return [self._dst, self._func, *self._call_args]
 
     @property
     def dst(self):
-        return self.args[0]
+        return self._dst
 
     @dst.setter
     def dst(self, value):
-        self.args[0] = value
+        self._dst = value
 
     @property
     def func(self):
-        return self.args[1]
+        return self._func
 
     @func.setter
     def func(self, value):
-        self.args[1] = value
+        self._func = value
 
     @property
     def call_args(self):
-        return self.args[2:]
+        return self._call_args
 
     @call_args.setter
     def call_args(self, value):
-        self.args[2:] = value
+        self._call_args = list(value)
 
     def get_defs(self):
-        return [self.dst]
+        return [self._dst]
 
     def get_uses(self):
         uses = []
-        if self.dst.ref_obj:
-            uses.append(self.dst.ref_obj)
-        uses.extend(self._arg_uses(self.func))
-        for a in self.call_args:
+        if self._dst.ref_obj:
+            uses.append(self._dst.ref_obj)
+        uses.extend(self._arg_uses(self._func))
+        for a in self._call_args:
             uses.extend(self._arg_uses(a))
         return uses
 
+    def replace_arg(self, idx, value):
+        if idx == 0:
+            self._dst = value
+        elif idx == 1:
+            self._func = value
+        else:
+            self._call_args[idx - 2] = value
+
     def remap_args(self, fn):
-        for i in range(len(self.args)):
-            self.args[i] = fn(self.args[i])
+        self._dst = fn(self._dst)
+        self._func = fn(self._func)
+        self._call_args = [fn(a) for a in self._call_args]
 
     def __str__(self):
-        call_args_str = [str(a) for a in self.call_args]
+        call_args_str = [str(a) for a in self._call_args]
         return self.format_nac_str_with_label(
-            f'{self.dst} = {self.func}({", ".join(call_args_str)})'
+            f'{self._dst} = {self._func}({", ".join(call_args_str)})'
         )
 
 
@@ -392,24 +451,34 @@ class ReturnNAC(NACBase):
                  parent_block=None, label_name='', comment='', extra_info=None):
         super().__init__(parent_block=parent_block, label_name=label_name,
                          comment=comment, extra_info=extra_info)
-        self.args = [retval]
+        self._retval = retval
+
+    @property
+    def args(self):
+        return [self._retval]
 
     @property
     def retval(self):
-        return self.args[0]
+        return self._retval
 
     @retval.setter
     def retval(self, value):
-        self.args[0] = value
+        self._retval = value
 
     def get_uses(self):
-        return self._arg_uses(self.retval)
+        return self._arg_uses(self._retval)
+
+    def replace_arg(self, idx, value):
+        if idx == 0:
+            self._retval = value
+        else:
+            raise IndexError(f'ReturnNAC has no arg at index {idx}')
 
     def remap_args(self, fn):
-        self.args[0] = fn(self.args[0])
+        self._retval = fn(self._retval)
 
     def __str__(self):
-        return self.format_nac_str_with_label(f'return {self.retval}')
+        return self.format_nac_str_with_label(f'return {self._retval}')
 
 
 class UncondThrowNAC(NACBase):
@@ -421,24 +490,34 @@ class UncondThrowNAC(NACBase):
                  parent_block=None, label_name='', comment='', extra_info=None):
         super().__init__(parent_block=parent_block, label_name=label_name,
                          comment=comment, extra_info=extra_info)
-        self.args = [exception]
+        self._exception = exception
+
+    @property
+    def args(self):
+        return [self._exception]
 
     @property
     def exception(self):
-        return self.args[0]
+        return self._exception
 
     @exception.setter
     def exception(self, value):
-        self.args[0] = value
+        self._exception = value
 
     def get_uses(self):
-        return self._arg_uses(self.exception)
+        return self._arg_uses(self._exception)
+
+    def replace_arg(self, idx, value):
+        if idx == 0:
+            self._exception = value
+        else:
+            raise IndexError(f'UncondThrowNAC has no arg at index {idx}')
 
     def remap_args(self, fn):
-        self.args[0] = fn(self.args[0])
+        self._exception = fn(self._exception)
 
     def __str__(self):
-        return self.format_nac_str_with_label(f'throw {self.exception}')
+        return self.format_nac_str_with_label(f'throw {self._exception}')
 
 
 class CondThrowNAC(NACBase):
@@ -451,41 +530,58 @@ class CondThrowNAC(NACBase):
         super().__init__(parent_block=parent_block, label_name=label_name,
                          comment=comment, extra_info=extra_info)
         self.op = op
-        self.args = [cond1, cond2, exception]
+        self._cond1 = cond1
+        self._cond2 = cond2
+        self._exception = exception
+
+    @property
+    def args(self):
+        return [self._cond1, self._cond2, self._exception]
 
     @property
     def cond1(self):
-        return self.args[0]
+        return self._cond1
 
     @cond1.setter
     def cond1(self, value):
-        self.args[0] = value
+        self._cond1 = value
 
     @property
     def cond2(self):
-        return self.args[1]
+        return self._cond2
 
     @cond2.setter
     def cond2(self, value):
-        self.args[1] = value
+        self._cond2 = value
 
     @property
     def exception(self):
-        return self.args[2]
+        return self._exception
 
     @exception.setter
     def exception(self, value):
-        self.args[2] = value
+        self._exception = value
 
     def get_uses(self):
         uses = []
-        for a in [self.cond1, self.cond2, self.exception]:
+        for a in [self._cond1, self._cond2, self._exception]:
             uses.extend(self._arg_uses(a))
         return uses
 
+    def replace_arg(self, idx, value):
+        if idx == 0:
+            self._cond1 = value
+        elif idx == 1:
+            self._cond2 = value
+        elif idx == 2:
+            self._exception = value
+        else:
+            raise IndexError(f'CondThrowNAC has no arg at index {idx}')
+
     def remap_args(self, fn):
-        for i in range(3):
-            self.args[i] = fn(self.args[i])
+        self._cond1 = fn(self._cond1)
+        self._cond2 = fn(self._cond2)
+        self._exception = fn(self._exception)
 
     def is_relational_operation(self):
         return self.op in _RELATIONAL_OPS
@@ -499,7 +595,7 @@ class CondThrowNAC(NACBase):
         return False
 
     def __str__(self):
-        s = f'if ({self.cond1} {self.op} {self.cond2}) throw {self.exception}'
+        s = f'if ({self._cond1} {self.op} {self._cond2}) throw {self._exception}'
         return self.format_nac_str_with_label(s)
 
 
@@ -512,39 +608,56 @@ class ImportNAC(NACBase):
                  parent_block=None, label_name='', comment='', extra_info=None):
         super().__init__(parent_block=parent_block, label_name=label_name,
                          comment=comment, extra_info=extra_info)
-        self.args = [imported, local_name, module]
+        self._imported = imported
+        self._local_name = local_name
+        self._module = module
+
+    @property
+    def args(self):
+        return [self._imported, self._local_name, self._module]
 
     @property
     def imported(self):
-        return self.args[0]
+        return self._imported
 
     @imported.setter
     def imported(self, value):
-        self.args[0] = value
+        self._imported = value
 
     @property
     def local_name(self):
-        return self.args[1]
+        return self._local_name
 
     @local_name.setter
     def local_name(self, value):
-        self.args[1] = value
+        self._local_name = value
 
     @property
     def module(self):
-        return self.args[2]
+        return self._module
 
     @module.setter
     def module(self, value):
-        self.args[2] = value
+        self._module = value
+
+    def replace_arg(self, idx, value):
+        if idx == 0:
+            self._imported = value
+        elif idx == 1:
+            self._local_name = value
+        elif idx == 2:
+            self._module = value
+        else:
+            raise IndexError(f'ImportNAC has no arg at index {idx}')
 
     def remap_args(self, fn):
-        for i in range(3):
-            self.args[i] = fn(self.args[i])
+        self._imported = fn(self._imported)
+        self._local_name = fn(self._local_name)
+        self._module = fn(self._module)
 
     def __str__(self):
-        s = ('import { ' + f'{self.imported}' + ' } as '
-             + f"{self.local_name} from '{self.module}';")
+        s = ('import { ' + f'{self._imported}' + ' } as '
+             + f"{self._local_name} from '{self._module}';")
         return self.format_nac_str_with_label(s)
 
 
@@ -557,23 +670,29 @@ class VarDeclNAC(NACBase):
                  parent_block=None, label_name='', comment='', extra_info=None):
         super().__init__(parent_block=parent_block, label_name=label_name,
                          comment=comment, extra_info=extra_info)
-        self.args = list(var_names)
+        self._var_names = list(var_names)
+
+    @property
+    def args(self):
+        return list(self._var_names)
 
     @property
     def var_names(self):
-        return self.args
+        return self._var_names
 
     @var_names.setter
     def var_names(self, value):
-        self.args[:] = value
+        self._var_names = list(value)
+
+    def replace_arg(self, idx, value):
+        self._var_names[idx] = value
 
     def remap_args(self, fn):
-        for i in range(len(self.args)):
-            self.args[i] = fn(self.args[i])
+        self._var_names = [fn(v) for v in self._var_names]
 
     def __str__(self):
         return self.format_nac_str_with_label(
-            f'let {", ".join([str(a) for a in self.var_names])}'
+            f'let {", ".join([str(a) for a in self._var_names])}'
         )
 
 
@@ -590,6 +709,9 @@ class UnknownNAC(NACBase):
                          comment=comment, extra_info=extra_info)
         self.op = op
         self.args = list(args) if args is not None else []
+
+    def replace_arg(self, idx, value):
+        self.args[idx] = value
 
     def remap_args(self, fn):
         for i in range(len(self.args)):

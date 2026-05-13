@@ -314,19 +314,19 @@ class CopyPropagation(MethodPass):
                     if len(replace_with) == 1:
                         if copy_op == '':
                             # copy is of the form x=y (one argument with no operator on rhs)
-                            insn.args[idx] = replace_with[0]
+                            insn.replace_arg(idx, replace_with[0])
                         else:
                             # copy is of the form x=uop y
                             if copy_.type is NAddressCodeType.ASSIGN:
-                                insn.args[idx] = ExprArg(replace_with, 'arith', copy_.op)
+                                insn.replace_arg(idx, ExprArg(replace_with, 'arith', copy_.op))
                             elif copy_.type is NAddressCodeType.CALL:
-                                insn.args[idx] = ExprArg(replace_with, 'call', copy_.op)
+                                insn.replace_arg(idx, ExprArg(replace_with, 'call', copy_.op))
                     elif len(replace_with) > 1:
                         # copy is of the form x=y bop z or x=func(y) (two-or-more-argument expression on rhs)
                         if copy_.type is NAddressCodeType.ASSIGN:
-                            insn.args[idx] = ExprArg(replace_with, 'arith', copy_.op)
+                            insn.replace_arg(idx, ExprArg(replace_with, 'arith', copy_.op))
                         elif copy_.type is NAddressCodeType.CALL:
-                            insn.args[idx] = ExprArg(replace_with, 'call', copy_.op)
+                            insn.replace_arg(idx, ExprArg(replace_with, 'call', copy_.op))
                 if arg.ref_obj and arg.ref_obj == var_to_replace:
                     if len(replace_with) == 1:
                         insn.args[idx].ref_obj = replace_with[0]
