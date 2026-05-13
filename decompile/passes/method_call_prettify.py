@@ -15,7 +15,7 @@ class MethodCallPrettify(MethodPass):
     def run_on_block(self, block: IRBlock):
         for insn in block.insns:
             if insn.type == NAddressCodeType.CALL:
-                if len(insn.args) < 4:  # v0 = func(FunctionObject, NewTarget, ...), at least four arguments
+                if len(insn.call_args) < 2:  # func(FunctionObject, NewTarget, ...), at least two call args
                     continue
-                if insn.args[2].type == 'FunctionObject' and insn.args[3].type == 'NewTarget':
-                    insn.args[2:] = insn.args[4:]
+                if insn.call_args[0].type == 'FunctionObject' and insn.call_args[1].type == 'NewTarget':
+                    insn.call_args = insn.call_args[2:]
