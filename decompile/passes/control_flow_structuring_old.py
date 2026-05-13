@@ -4,7 +4,7 @@ import typing
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.builder import IRBuilder
 from decompile.ir.method import IRMethod
-from decompile.ir.nac import NAddressCode, NAddressCodeType
+from decompile.ir.nac import NAddressCodeType, UnknownNAC
 from decompile.method_pass import MethodPass
 from decompile.passes.cfg_utils import CFGUtils
 from pandasm.insn import PandasmInsnArgument
@@ -171,7 +171,7 @@ class ControlFlowStructuringOld(MethodPass):
 
     def recover_if_type1_2(self, cond_node, follow_node):
         cond_jump_insn = cond_node.insns[-1]
-        cond_jump_target = cond_node.parent_method.get_insn_by_label(cond_jump_insn.args[2].value).parent_block
+        cond_jump_target = cond_node.parent_method.get_insn_by_label(cond_jump_insn.target.value).parent_block
         if cond_jump_target == follow_node:
             # type 1: if (!condition) { [non follow node] } [follow node]
             # negate the condition if it's type 1
@@ -183,8 +183,8 @@ class ControlFlowStructuringOld(MethodPass):
             pass
 
         # now, something to do for both type 1 and 2
-        new_if_text = f'if ({cond_jump_insn.args[0]} {cond_jump_insn.op} {cond_jump_insn.args[1]})' + ' {'
-        new_if = NAddressCode(new_if_text, [], nac_type=NAddressCodeType.UNKNOWN, label_name=cond_jump_insn.label)
+        new_if_text = f'if ({cond_jump_insn.cond1} {cond_jump_insn.op} {cond_jump_insn.cond2})' + ' {'
+        new_if = UnknownNAC(new_if_text, [], label_name=cond_jump_insn.label)
         cond_jump_insn.erase_from_parent()
         cond_node.insert_insn(new_if)
 
@@ -192,7 +192,7 @@ class ControlFlowStructuringOld(MethodPass):
         for insn in non_follow_node.insns:
             cond_node.insert_insn(insn)
 
-        cond_node.insert_insn(NAddressCode('}', [], nac_type=NAddressCodeType.UNKNOWN))
+        cond_node.insert_insn(UnknownNAC('}', []))
 
         cond_node.clear_successors()
         cond_node.add_successor(follow_node)
@@ -200,23 +200,23 @@ class ControlFlowStructuringOld(MethodPass):
 
     def recover_if_type3(self, cond_node, follow_node):
         cond_jump_insn = cond_node.insns[-1]
-        cond_jump_target = cond_node.parent_method.get_insn_by_label(cond_jump_insn.args[2].value).parent_block
+        cond_jump_target = cond_node.parent_method.get_insn_by_label(cond_jump_insn.target.value).parent_block
         non_cond_jump_target = [node for node in cond_node.successors if node != cond_jump_target][0]
 
-        new_if_text = f'if ({cond_jump_insn.args[0]} {cond_jump_insn.op} {cond_jump_insn.args[1]})' + ' {'
-        new_if = NAddressCode(new_if_text, [], nac_type=NAddressCodeType.UNKNOWN, label_name=cond_jump_insn.label)
+        new_if_text = f'if ({cond_jump_insn.cond1} {cond_jump_insn.op} {cond_jump_insn.cond2})' + ' {'
+        new_if = UnknownNAC(new_if_text, [], label_name=cond_jump_insn.label)
         cond_jump_insn.erase_from_parent()
         cond_node.insert_insn(new_if)
 
         for insn in cond_jump_target.insns:
             cond_node.insert_insn(insn)
 
-        cond_node.insert_insn(NAddressCode('} else {', [], nac_type=NAddressCodeType.UNKNOWN))
+        cond_node.insert_insn(UnknownNAC('} else {', []))
 
         for insn in non_cond_jump_target.insns:
             cond_node.insert_insn(insn)
 
-        cond_node.insert_insn(NAddressCode('}', [], nac_type=NAddressCodeType.UNKNOWN))
+        cond_node.insert_insn(UnknownNAC('}', []))
         cond_node.clear_successors()
         cond_node.add_successor(follow_node)
         cond_jump_target.erase_from_parent()

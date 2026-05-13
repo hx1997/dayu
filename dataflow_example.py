@@ -11,7 +11,7 @@ import os
 
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.method import IRMethod
-from decompile.ir.nac import NAddressCode, NAddressCodeType
+from decompile.ir.nac import AssignNAC, CondJumpNAC, NAddressCodeType, ReturnNAC, UncondJumpNAC
 from decompile.passes.defuse import DefUseAnalysis
 from decompile.passes.reaching_def import ReachingDefinitions
 from decompile.passes.live_variable import LiveVariableAnalysis
@@ -55,30 +55,30 @@ def create_example_method():
     const20 = PandasmInsnArgument('imm', '20')
     
     # v0 = 5
-    insn1 = NAddressCode('=', [v0, const5], NAddressCodeType.ASSIGN)
+    insn1 = AssignNAC('=', v0, const5)
     block0.insert_insn(insn1)
     
     # v1 = v0  
-    insn2 = NAddressCode('=', [v1, v0], NAddressCodeType.ASSIGN)
+    insn2 = AssignNAC('=', v1, v0)
     block0.insert_insn(insn2)
     
     # Block 1: v2 = v1 + 10; if v2 > 15 jump Block3
-    insn3 = NAddressCode('+', [v2, v1, const10], NAddressCodeType.ASSIGN)
+    insn3 = AssignNAC('+', v2, v1, const10)
     block1.insert_insn(insn3)
     
     label_block3 = PandasmInsnArgument('label', 'label_block3')
-    insn4 = NAddressCode('>', [v2, const15, label_block3], NAddressCodeType.COND_JUMP)
+    insn4 = CondJumpNAC('>', v2, label_block3, cond2=const15)
     block1.insert_insn(insn4)
     
     # Block 2: v1 = 20; jump Block3
-    insn5 = NAddressCode('=', [v1, const20], NAddressCodeType.ASSIGN)
+    insn5 = AssignNAC('=', v1, const20)
     block2.insert_insn(insn5)
     
-    insn6 = NAddressCode('jump', [label_block3], NAddressCodeType.UNCOND_JUMP)
+    insn6 = UncondJumpNAC(label_block3)
     block2.insert_insn(insn6)
     
     # Block 3: return v1
-    insn7 = NAddressCode('return', [v1], NAddressCodeType.RETURN)
+    insn7 = ReturnNAC(v1)
     insn7.label = 'label_block3'  # Set the label for this instruction
     block3.insert_insn(insn7)
     
