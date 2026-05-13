@@ -1,4 +1,3 @@
-import random
 import traceback
 
 from ordered_set import OrderedSet
@@ -42,6 +41,7 @@ class ControlFlowStructuring(MethodPass):
         self.post_ctr = 0
         self.post_max = 0
         self.post = {}
+        self.post_num = {}
         self.visit = {}
         self.dominators = {}
 
@@ -124,6 +124,10 @@ class ControlFlowStructuring(MethodPass):
                 self.dfs_postorder(method, y)
         self.post_max += 1
         self.post[self.post_max] = x
+        self.post_num[x] = self.post_max
+
+    def pick_deterministic_node(self, nodes):
+        return min(nodes, key=lambda node: self.post_num[node])
 
     def acyclic_region_type(self, node, nset: OrderedSet):
         nset.clear()
@@ -134,7 +138,7 @@ class ControlFlowStructuring(MethodPass):
             nset_union = nset.union({n})
             nset.clear()
             nset.update(nset_union)
-            n = random.choice(list(n.successors))
+            n = next(iter(n.successors))
             p = len(n.predecessors) == 1
             s = len(n.successors) == 1
         if p:
@@ -148,7 +152,7 @@ class ControlFlowStructuring(MethodPass):
             nset_union = nset.union({n})
             nset.clear()
             nset.update(nset_union)
-            n = random.choice(list(n.predecessors))
+            n = next(iter(n.predecessors))
             p = len(n.predecessors) == 1
             s = len(n.successors) == 1
         if s:
@@ -181,7 +185,7 @@ class ControlFlowStructuring(MethodPass):
 
         # FIXME: handle Improper regions
 
-        m = random.choice(list(nset.difference({node})))
+        m = self.pick_deterministic_node(nset.difference({node}))
         if len(node.successors) == 2 and len(m.predecessors) == 1 and len(node.predecessors) == 2 and len(m.successors) == 1:
             return RegionType.WhileLoop
         else:
