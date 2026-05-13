@@ -1,7 +1,9 @@
 import typing
 
 from decompile.ir.basicblock import IRBlock
-from decompile.ir.nac import NAddressCode, NAddressCodeType
+from decompile.ir.nac import (AssignNAC, CallNAC, CondJumpNAC, CondThrowNAC,
+                               ImportNAC, NAddressCodeType, ReturnNAC,
+                               UncondJumpNAC, UncondThrowNAC, VarDeclNAC)
 from pandasm.insn import PandasmInsnArgument
 
 
@@ -29,21 +31,21 @@ class IRBuilder:
     def create_assign(self, src: PandasmInsnArgument, dst: typing.Union[PandasmInsnArgument, None] = None, label='', extra_info=None):
         if not dst:
             dst = PandasmInsnArgument('acc')
-        insn = NAddressCode('', [dst, src], label_name=label, extra_info=extra_info)
+        insn = AssignNAC(op='', dst=dst, src=src, label_name=label, extra_info=extra_info)
         self.insert(insn)
 
     def create_assign_rhs_uop(self, src: PandasmInsnArgument, dst: typing.Union[PandasmInsnArgument, None] = None, rhs_op='', label=''):
         assert rhs_op != ''
         if not dst:
             dst = PandasmInsnArgument('acc')
-        insn = NAddressCode(rhs_op, [dst, src], label_name=label)
+        insn = AssignNAC(op=rhs_op, dst=dst, src=src, label_name=label)
         self.insert(insn)
 
     def create_assign_rhs_bop(self, src1: PandasmInsnArgument, src2: PandasmInsnArgument, dst: typing.Union[PandasmInsnArgument, None] = None, rhs_op='', label=''):
         assert rhs_op != ''
         if not dst:
             dst = PandasmInsnArgument('acc')
-        insn = NAddressCode(rhs_op, [dst, src1, src2], label_name=label)
+        insn = AssignNAC(op=rhs_op, dst=dst, src=src1, src2=src2, label_name=label)
         self.insert(insn)
 
     def create_uncond_jump(self, target: PandasmInsnArgument, label=''):
@@ -54,7 +56,7 @@ class IRBuilder:
         target_block = target_nac.parent_block
         self.insert_point[0].add_successor(target_block)
 
-        insn = NAddressCode('', [target], NAddressCodeType.UNCOND_JUMP, label_name=label)
+        insn = UncondJumpNAC(target=target, label_name=label)
         self.insert(insn)
 
     def create_cond_jump(self, cond_arg1, cond_arg2, rop, target: PandasmInsnArgument, label=''):
@@ -65,14 +67,14 @@ class IRBuilder:
         target_block = target_nac.parent_block
         self.insert_point[0].add_successor(target_block)
 
-        insn = NAddressCode(rop, [cond_arg1, cond_arg2, target], NAddressCodeType.COND_JUMP, label_name=label)
+        insn = CondJumpNAC(op=rop, cond1=cond_arg1, cond2=cond_arg2, target=target, label_name=label)
         self.insert(insn)
 
     def create_call(self, func: PandasmInsnArgument, args: typing.List[PandasmInsnArgument],
                     dst: typing.Union[PandasmInsnArgument, None] = None, label='', comment='', extra_info=None):
         if not dst:
             dst = PandasmInsnArgument('acc')
-        insn = NAddressCode('', [dst, func, *args], NAddressCodeType.CALL, label_name=label, comment=comment, extra_info=extra_info)
+        insn = CallNAC(func=func, call_args=args, dst=dst, label_name=label, comment=comment, extra_info=extra_info)
         self.insert(insn)
 
     def create_return(self, retval: typing.Union[PandasmInsnArgument, None] = None, label=''):
@@ -85,7 +87,7 @@ class IRBuilder:
 
         if not retval:
             retval = PandasmInsnArgument('acc')
-        insn = NAddressCode('', [retval], NAddressCodeType.RETURN, label_name=label)
+        insn = ReturnNAC(retval=retval, label_name=label)
         self.insert(insn)
 
     def create_uncond_throw(self, exception: PandasmInsnArgument, label=''):
@@ -99,20 +101,20 @@ class IRBuilder:
             next_insn = self.insert_point[0].insns[next_insn_idx]
             self.insert_point[0].split_block(next_insn, False)
 
-        insn = NAddressCode('', [exception], NAddressCodeType.UNCOND_THROW, label_name=label)
+        insn = UncondThrowNAC(exception=exception, label_name=label)
         self.insert(insn)
 
     def create_cond_throw(self, cond_arg1, cond_arg2, rop, exception: PandasmInsnArgument, label=''):
         # since we don't take exception handlers into account for now,
         # we assume a conditional throw instruction will not go to a handler (i.e., no block split needed)
         # TODO: deal with exception handlers properly
-        insn = NAddressCode(rop, [cond_arg1, cond_arg2, exception], NAddressCodeType.COND_THROW, label_name=label)
+        insn = CondThrowNAC(op=rop, cond1=cond_arg1, cond2=cond_arg2, exception=exception, label_name=label)
         self.insert(insn)
 
     def create_import(self, imported_var, local_name, import_from_module, label=''):
-        insn = NAddressCode('', [imported_var, local_name, import_from_module], NAddressCodeType.IMPORT, label_name=label)
+        insn = ImportNAC(imported=imported_var, local_name=local_name, module=import_from_module, label_name=label)
         self.insert(insn)
 
     def create_var_decl(self, var_names, label='', extra_info=None):
-        insn = NAddressCode('', var_names, NAddressCodeType.VAR_DECL, label_name=label, extra_info=extra_info)
+        insn = VarDeclNAC(var_names=var_names, label_name=label, extra_info=extra_info)
         self.insert(insn)
