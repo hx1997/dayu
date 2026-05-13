@@ -68,15 +68,15 @@ class ResolveLexVar(ClassPass):
             insn: NAddressCode
             if insn.type == NAddressCodeType.UNKNOWN and insn.op == 'newlexenv':  # newlexenv (unlifted)
                 self.handle_newlexenv(insn, method_fullname, top_level_lexenv_on_entry, False)
-            elif insn.type == NAddressCodeType.VAR_DECL and isinstance(insn.args[0], PandasmInsnArgument) and insn.args[0].type == 'lexvar':  # newlexenv (lifted)
+            elif insn.type == NAddressCodeType.VAR_DECL and isinstance(insn.var_names[0], PandasmInsnArgument) and insn.var_names[0].type == 'lexvar':  # newlexenv (lifted)
                 self.handle_newlexenv(insn, method_fullname, top_level_lexenv_on_entry, True)
             elif insn.type == NAddressCodeType.UNKNOWN and insn.op == 'newlexenvwithname':  # newlexenvwithname (unlifted)
                 self.handle_newlexenvwithname(insn, method_fullname, top_level_lexenv_on_entry, False)
-            elif insn.type == NAddressCodeType.VAR_DECL and isinstance(insn.args[0], str):  # newlexenvwithname (lifted)
+            elif insn.type == NAddressCodeType.VAR_DECL and isinstance(insn.var_names[0], str):  # newlexenvwithname (lifted)
                 self.handle_newlexenvwithname(insn, method_fullname, top_level_lexenv_on_entry, True)
             elif insn.type == NAddressCodeType.UNKNOWN and insn.op == 'poplexenv':  # poplexenv (unlifted)
                 self.handle_poplexenv(insn, method_fullname)
-            elif insn.type == NAddressCodeType.CALL and insn.args[1].value == '__poplexenv__':  # poplexenv (lifted)
+            elif insn.type == NAddressCodeType.CALL and insn.func.value == '__poplexenv__':  # poplexenv (lifted)
                 self.handle_poplexenv(insn, method_fullname)
             elif insn.type == NAddressCodeType.UNKNOWN and insn.op in ['definemethod', 'definefunc']:  # definemethod/definefunc (unlifted)
                 self.handle_definemethod_definefunc(insn, method_fullname, top_level_lexenv_on_entry, False)
@@ -84,7 +84,7 @@ class ResolveLexVar(ClassPass):
                 self.handle_definemethod_definefunc(insn, method_fullname, top_level_lexenv_on_entry, True)
             elif insn.type == NAddressCodeType.UNKNOWN and insn.op == 'defineclasswithbuffer':  # defineclasswithbuffer (unlifted)
                 self.handle_defineclasswithbuffer(insn, method_fullname, top_level_lexenv_on_entry, False)
-            elif insn.type == NAddressCodeType.CALL and insn.args[1].value == '__define_class__':  # defineclasswithbuffer (lifted)
+            elif insn.type == NAddressCodeType.CALL and insn.func.value == '__define_class__':  # defineclasswithbuffer (lifted)
                 self.handle_defineclasswithbuffer(insn, method_fullname, top_level_lexenv_on_entry, True)
             else:
                 # resolve lexvar uses (e.g. in stlexvar/ldlexvar)
@@ -131,7 +131,7 @@ class ResolveLexVar(ClassPass):
             lexvar_name = f'lexvar_{lexenv.lexenv_level}_{i}'
             lexenv.add_lexvar(LexVar(lexenv.lexenv_level, lexvar_name))
             if lifted:
-                insn.args[i] = PandasmInsnArgument('lexvar', lexvar_name)  # rename
+                insn.var_names[i] = PandasmInsnArgument('lexvar', lexvar_name)  # rename
 
         self.per_method_lexenvs[method_fullname].append(lexenv)
         self.current_lexenv = lexenv
@@ -143,7 +143,7 @@ class ResolveLexVar(ClassPass):
         else:
             lexenv = LexEnv(block.parent_method, parent_lexenv=top_level_lexenv_on_entry)
 
-        lexvar_names = insn.args if lifted else InsnLifter.parse_newlexenvwithname(insn.args[2].value)
+        lexvar_names = insn.var_names if lifted else InsnLifter.parse_newlexenvwithname(insn.args[2].value)
         for name in lexvar_names:
             lexenv.add_lexvar(LexVar(lexenv.lexenv_level, name))
 
@@ -176,7 +176,7 @@ class ResolveLexVar(ClassPass):
 
     def handle_defineclasswithbuffer(self, insn, method_fullname, top_level_lexenv_on_entry, lifted):
         block = insn.parent_block
-        target_class_fullname = str(insn.args[2]) if lifted else str(insn.args[2])  # same for now
+        target_class_fullname = str(insn.call_args[0]) if lifted else str(insn.args[2])
         target_class_name = '.'.join(target_class_fullname.split(':')[0].split('.')[:-1])
         target_class = block.parent_method.parent_class.parent_module.get_class_by_name(target_class_name)
 
@@ -189,14 +189,11 @@ class ResolveLexVar(ClassPass):
                 self.do_run_on_method(target_method, top_level_lexenv_on_entry)
 
     def handle_lexvar_uses(self, insn):
-        new_args = []
-        for arg in insn.args:
+        def remap(arg):
             if isinstance(arg, PandasmInsnArgument) and arg.type == 'lexvar':
                 lexenv_relative_level = int(arg.value.split('_')[1])
                 lexvar_idx = int(arg.value.split('_')[2])
                 lexvar = self.get_lexvar(lexenv_relative_level, lexvar_idx)
-                lexvar_arg = PandasmInsnArgument('lexvar', lexvar.lexvar_name)
-                new_args.append(lexvar_arg)
-            else:
-                new_args.append(arg)
-        insn.args = new_args
+                return PandasmInsnArgument('lexvar', lexvar.lexvar_name)
+            return arg
+        insn.remap_args(remap)
