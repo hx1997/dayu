@@ -75,6 +75,7 @@ class Decompiler:
             for clz in self.ir_module.classes:
                 if clz.name == self.config.target_class:
                     return self.decompile_class(clz)
+            raise Exception(f'[{self.__class__.__name__}] error: class "{self.config.target_class}" not found')
         elif self.config.granularity is DecompileGranularity.METHOD:
             for clz in self.ir_module.classes:
                 if clz.name != self.config.target_class:
@@ -82,6 +83,8 @@ class Decompiler:
                 for method in clz.methods:
                     if method.name == self.config.target_method:
                         return self.decompile_method(method)
+                raise Exception(f'[{self.__class__.__name__}] error: method "{self.config.target_method}" not found in class "{self.config.target_class}"')
+            raise Exception(f'[{self.__class__.__name__}] error: class "{self.config.target_class}" not found')
         else:
             raise Exception(f'[{self.__class__.__name__}] error: invalid decompilation granularity')
 
