@@ -7,6 +7,7 @@ from decompile.ir.basicblock import IRBlock
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCode, NAddressCodeType
 from decompile.method_pass import MethodPass
+from decompile.passes.cfg_utils import CFGUtils
 from enum import IntEnum, auto
 
 class RegionType(IntEnum):
@@ -45,7 +46,7 @@ class ControlFlowStructuring(MethodPass):
         self.dominators = {}
 
     def run_on_method(self, method: IRMethod):
-        _, self.dominators = self.find_dominators(method)
+        _, self.dominators = CFGUtils.find_dominators(method)
         try:
             self.structural_analysis(method)
         except:
@@ -81,51 +82,6 @@ class ControlFlowStructuring(MethodPass):
 
     def is_back_edge(self, block_src: IRBlock, block_dst: IRBlock):
         return block_dst in self.dominators[block_src]
-
-    def find_dominators(self, method: IRMethod, reverse_graph=False):
-        in_d, out_d = {}, {}
-        entry_blocks = set()
-        for block in method.blocks:
-            if (not reverse_graph and self.is_no_predecessor_block(block)) or (reverse_graph and self.is_no_successor_block(block)):
-                out_d[block] = {block}
-                entry_blocks.add(block)
-
-        for block in method.blocks:
-            if block not in entry_blocks:
-                out_d[block] = set(method.blocks)
-
-        out_changed = False
-        first_time = True
-        while out_changed or first_time:
-            out_changed = False
-            first_time = False
-            for block in method.blocks:
-                if block in entry_blocks:
-                    continue
-                if reverse_graph:
-                    pred_or_succ = block.successors
-                else:
-                    pred_or_succ = block.predecessors
-                if pred_or_succ:
-                    out_p = out_d[pred_or_succ[0]]
-                    for pred in pred_or_succ[1:]:
-                        out_p = out_p.intersection(out_d[pred])
-                else:
-                    out_p = set()
-                in_d[block] = out_p
-
-                old_out_d = out_d.copy()
-                out_d[block] = in_d[block].union({block})
-                if old_out_d != out_d:
-                    out_changed = True
-
-        return in_d, out_d
-
-    def is_no_predecessor_block(self, block: IRBlock):
-        return len(block.predecessors) == 0
-
-    def is_no_successor_block(self, block: IRBlock):
-        return len(block.successors) == 0
 
     def structural_analysis(self, method: IRMethod):
         entry = method.blocks[0]
@@ -445,7 +401,7 @@ class ControlFlowStructuring(MethodPass):
 
     def replace(self, method: IRMethod, node, node_set):
         self.compact(node, node_set)
-        _, self.dominators = self.find_dominators(method)
+        _, self.dominators = CFGUtils.find_dominators(method)
         for block in method.blocks:
             if block == node:
                 continue
