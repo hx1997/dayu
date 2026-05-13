@@ -151,6 +151,8 @@ function __assert_defined__(obj) {
 ## Documentation
 [Under the Hood - how dayu works](docs/how_it_works.md)
 
+[Planned Improvements](docs/improvements.md)
+
 ## Known Issues
 - Limited coverage of the instruction set
 - Loops and conditionals are not recovered in some cases
