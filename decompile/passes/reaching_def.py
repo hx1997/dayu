@@ -3,7 +3,7 @@ import typing
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.expr import ExprArg
 from decompile.ir.method import IRMethod
-from decompile.ir.nac import NAddressCodeType, NAddressCode
+from decompile.ir.nac import NAddressCodeType
 from decompile.method_pass import MethodPass
 from decompile.passes.reverse_postorder import ReversePostorder
 from pandasm.insn import PandasmInsnArgument
@@ -30,8 +30,9 @@ class ReachingDefinitions(MethodPass):
                 cls.analyze_assign(insn, def_block, gen_block)
 
         for copy_ in copies:
+            copy_dst = copy_.get_defs()[0]
             for definition in def_block:
-                if definition != copy_ and definition.args[0] == copy_.args[0]:
+                if definition != copy_ and definition.get_defs()[0] == copy_dst:
                     # if for this copy, say x=y, x is redefined in this block, then add it to kill set
                     kill_block.add(copy_)
 
@@ -41,7 +42,7 @@ class ReachingDefinitions(MethodPass):
                 for arg in copy_.args[1:]:
                     if isinstance(arg, ExprArg):
                         vars_used_in_copy.extend(arg.get_used_args())
-                if definition.args[0] in vars_used_in_copy:
+                if definition.get_defs()[0] in vars_used_in_copy:
                     kill_block.add(copy_)
 
         return gen_block, kill_block
@@ -56,16 +57,12 @@ class ReachingDefinitions(MethodPass):
         return copies
 
     @classmethod
-    def analyze_assign(cls, insn: NAddressCode, def_block, gen_block):
+    def analyze_assign(cls, insn, def_block, gen_block):
         def_block.add(insn)
+        insn_dst = insn.get_defs()[0]
 
         # gen is the set of definitions (x=y) defined in this block without x or y being subsequently redefined in it
-        # first add to the set this assign instruction
-        if len(insn.args) == 2:
-            gen_block.add(insn)
-        elif len(insn.args) >= 3:
-            # for the three-argument ASSIGN case x=y+z and the CALL case x = y(z1,z2,...)
-            gen_block.add(insn)
+        gen_block.add(insn)
 
         # then, remove a previous definition from the gen set if its left-hand side is redefined
         gen_block_copy = gen_block.copy()
@@ -74,14 +71,15 @@ class ReachingDefinitions(MethodPass):
                 # don't remove what we've just added
                 if definition == insn:
                     continue
-                if definition.args[0] == insn.args[0]:
+                def_dst = definition.get_defs()[0]
+                if def_dst == insn_dst:
                     gen_block.remove(definition)
                     continue
-                if definition.args[0].ref_obj and definition.args[0].ref_obj == insn.args[0]:
+                if def_dst.ref_obj and def_dst.ref_obj == insn_dst:
                     gen_block.remove(definition)
                     continue
                 # for definitions like reg:v2 = {}, a subsequent reg:v2["abc"] = acc should cause the removal of reg:v2
-                if insn.args[0].ref_obj and insn.args[0].ref_obj == definition.args[0]:
+                if insn_dst.ref_obj and insn_dst.ref_obj == def_dst:
                     gen_block.remove(definition)
                     continue
                 # for nested ExprArg
@@ -89,7 +87,7 @@ class ReachingDefinitions(MethodPass):
                 for arg in definition.args[1:]:
                     if isinstance(arg, ExprArg):
                         vars_used_in_expr.extend(arg.get_used_args())
-                if insn.args[0] in vars_used_in_expr:
+                if insn_dst in vars_used_in_expr:
                     gen_block.remove(definition)
                     continue
             except KeyError:
