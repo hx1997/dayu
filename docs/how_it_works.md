@@ -166,6 +166,28 @@ Beyond the general principles, there are further details that need consideration
 
 Also done in Stage 5 are variable allocation, which renames registers into variables, and some minor optimizations to make the code more readable.
 
+### Exception region handling
+
+So far we've only talked about recovering `if-else` and `while` patterns. What about `try-catch`?
+
+You might be tempted to model exception edges the same way as ordinary control flow: add an edge from each `throw` site to the handler entry and let structural analysis figure out the rest. The trouble is that the reducer has no notion of a "try body" or a "handler body"—it just sees blocks and edges. It would happily merge a block from inside the try body with one from the handler, or let the handler participate in a `while`-loop reduction that straddles the try boundary, producing a mangled mess either way.
+
+dayu's solution is to keep exception information *out* of the ordinary CFG entirely and deal with it in a dedicated post-pass. When dayu encounters a `.catchall` directive in Panda Assembly,
+
+```
+.catchall try_begin, try_end, handler_begin, handler_end
+```
+
+it records the four label names as a `PandasmTryCatchRegion` object attached to the method and moves on. No edge is drawn to the handler block. As far as the CFG is concerned, exceptions don't exist.
+
+After the CFG is built, `BuildCFG` revisits these records and resolves each one into a `ResolvedTryRegion`—a pair of block-id sets, one for the try body and one for the handler body. It maps the boundary labels onto their corresponding basic blocks and collects every block that falls between each pair of labels in the assembly text. These block-id sets are kept alive throughout later passes via each block's `origin_block_ids` field. Even when a block is merged away by reduction, its `origin_block_ids` carries the original block numbers it absorbed—so asking "does this merged block contain any try-body block?" always has a definite answer.
+
+Structural analysis then runs as usual, with just one extra check added: before each candidate reduction, the algorithm asks whether the candidate region would cross a try-body/handler-body boundary or a try-body/outer-code boundary. If it would, the reduction is skipped. This one guard is enough to keep the two sides from being merged together.
+
+After structural analysis finishes, the dedicated `ProcessTryCatchRegions` pass handles what remains. It takes the two block sets, stitches their contents together in the order they appeared in the assembly text, and wraps the result in a `try { ... } catch { ... }` shell. The old scattered blocks are then replaced in the CFG, and all blocks in the method are reordered to match their original assembly-text order, so the output reads from top to bottom as the original source intended.
+
+This approach handles both single and nested `.catchall` regions. Two limitations remain for now. Typed `.catch` directives (e.g., `.catch ExceptionType, ...`) are not yet supported and are silently skipped during parsing. Additionally, complex methods involving async/await generator patterns may produce correct `try-catch` nesting overall, but still have residual low-level jumps or labels inside the recovered structure.
+
 Congratulations! You've arrived at the destination: pseudocode. It's been a tiring journey, but (hopefully) a rewarding one too. This is the end (or is it...?).
 
 <details>

@@ -27,8 +27,10 @@ In `llir_to_mlir`, the fixed-point check compares `method.count_insns()` before 
 
 ## Missing Features
 
-### 5. Exception / try-catch handling [Pending]
-Multiple `FIXME` comments acknowledge that `throw`/try-catch structures are not properly analyzed. `BuildCFG` severs all edges from throw blocks rather than connecting them to their handlers. This causes silent, incorrect output for any method that uses exception handling — a very common pattern in real-world ArkTS apps.
+### 5. Exception / try-catch handling [Partial]
+`.catchall` directives are now parsed from Panda Assembly into `PandasmTryCatchRegion` objects, propagated to `IRMethod.try_regions`, and resolved during CFG construction into lexical block spans stored in `IRMethod.resolved_try_regions`. dayu no longer models exception handlers as ordinary CFG edges; instead, ordinary structural analysis avoids reducing across resolved try-region boundaries, and a dedicated post-pass (`ProcessTryCatchRegions`) wraps those resolved regions into `try { } catch { }` pseudocode after normal control-flow recovery.
+
+This is a substantial improvement over the previous "no try-catch support" state, and nested `.catchall` regions are now emitted in pseudocode. However, the work is still incomplete: typed `.catch` directives remain unsupported, lexical reordering only addresses region ordering (not every possible control-flow artifact), and complex methods can still retain extra low-level jumps or labels around the recovered `try-catch` output.
 
 ### 6. Improper region handling in structural analysis [Pending]
 The `# FIXME: handle Improper regions` comment in `control_flow_structuring.py` means any method with an irreducible CFG will fail silently and fall back to unstructured output. The standard approach is to insert explicit `goto` statements for severed back-edges and continue the reduction algorithm.

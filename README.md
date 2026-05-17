@@ -131,7 +131,7 @@ Decompiled:
 
 ![](docs/imgs/cfg_cropImage.png)
 
-There's an unsupported `try-catch` structure, and the result is more tedious and harder to read now, but it's basically correct.
+This method includes nested `try-catch` regions. dayu now emits `try { ... } catch { ... }` pseudocode for `.catchall` regions, although the result is still more verbose and lower-level than the original ArkTS.
 
 ## Caveats
 As much as dayu tries to output code that conforms to the syntax of ArkTS/TypeScript, this isn't always possible or easy to achieve (for me). Some points to note:  
@@ -167,7 +167,7 @@ The current suite covers both bundled example datasets in `examples/`, including
 ## Known Issues
 - Limited coverage of the instruction set
 - Loops and conditionals are not recovered in some cases
-- No support for `try-catch` structures
+- `try-catch` recovery currently handles `.catchall` regions only; typed `.catch` directives are still unsupported, and complex methods may retain extra jumps or labels
 - Lack of type analysis (both ArkTS and TypeScript are typed)
 - Performance has now been boosted! <s>Slow. Very slow. Largely caused by two things: Panda Assembly parsing and copy propagation, both of which are badly written.</s>
 
