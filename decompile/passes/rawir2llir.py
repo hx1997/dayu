@@ -4,7 +4,7 @@ import logging
 from decompile.dec_pass import Pass
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.builder import IRBuilder
-from decompile.ir.nac import NAddressCode, NAddressCodeType
+from decompile.ir.nac import NAddressCodeType, UnknownNAC
 from decompile.ir.insn_enum import mnemonic2lifter_map
 from decompile.ir.irclass import IRClass
 from decompile.ir.method import IRMethod
@@ -26,7 +26,7 @@ class RawIR2LLIR(Pass):
                     lifter = mnemonic2lifter_map[insn.op]
                     lifter(insn, builder)
                 else:
-                    nac = NAddressCode(insn.op, insn.args, NAddressCodeType.UNKNOWN, label_name=insn.label)
+                    nac = UnknownNAC(op=insn.op, args=insn.args, label_name=insn.label)
                     builder.insert(nac)
                     logging.getLogger(__name__).warning(
                         '[%s] UNKNOWN NAC "%s" encountered in method %s. Analysis may be wrong!',
