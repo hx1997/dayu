@@ -91,11 +91,9 @@ class IRBuilder:
         self.insert(insn)
 
     def create_uncond_throw(self, exception: PandasmInsnArgument, label=''):
-        # since we don't take exception handlers into account for now,
-        # an unconditional throw instruction will mean the end of a basic block and no successors,
-        # so split the block from here if there are more instructions after this one,
-        # and do not connect to the next block
-        # TODO: deal with exception handlers properly
+        # an unconditional throw marks the end of a basic block; split here if there are more instructions
+        # after this one. Exception handlers are modeled separately from ordinary CFG edges,
+        # so neither conditional nor unconditional throws add handler successors here.
         next_insn_idx = self.insert_point[1] + 1
         if next_insn_idx < len(self.insert_point[0].insns):
             next_insn = self.insert_point[0].insns[next_insn_idx]
@@ -105,9 +103,9 @@ class IRBuilder:
         self.insert(insn)
 
     def create_cond_throw(self, cond_arg1, cond_arg2, rop, exception: PandasmInsnArgument, label=''):
-        # since we don't take exception handlers into account for now,
-        # we assume a conditional throw instruction will not go to a handler (i.e., no block split needed)
-        # TODO: deal with exception handlers properly
+        # a conditional throw (e.g. throw.undefinedifholewithname) does not split the basic block;
+        # exception handling is recovered at the structural region level via try_regions metadata,
+        # not via per-instruction CFG edges.
         insn = CondThrowNAC(op=rop, cond1=cond_arg1, cond2=cond_arg2, exception=exception, label_name=label)
         self.insert(insn)
 

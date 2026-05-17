@@ -1,15 +1,30 @@
 import typing
+from dataclasses import dataclass
 
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.method_ctx import IRMethodContext
 from decompile.ir.nac import NAddressCode
 from pandasm.insn import PandasmInsnArgument
+from pandasm.method import PandasmTryCatchRegion
+
+
+@dataclass
+class ResolvedTryRegion:
+    # region preserves the original Pandasm exception-table entry, while the
+    # block-id sets point at the current CFG blocks that cover that lexical span.
+    region: PandasmTryCatchRegion
+    try_block_ids: typing.Set[int]
+    handler_block_ids: typing.Set[int]
 
 
 class IRMethod:
     def __init__(self, name=None, parent_class=None):
         self.name = name
         self.blocks: typing.List[IRBlock] = []
+        # Raw .catchall metadata copied from Pandasm parsing.
+        self.try_regions: typing.List[PandasmTryCatchRegion] = []
+        # IR-level resolution of try_regions onto the CFG blocks built for this method.
+        self.resolved_try_regions: typing.List[ResolvedTryRegion] = []
         self.parent_class = parent_class
         if self.parent_class:
             self.parent_class.insert_method(self)

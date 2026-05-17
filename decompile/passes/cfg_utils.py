@@ -3,6 +3,24 @@ from decompile.ir.method import IRMethod
 
 class CFGUtils:
     @staticmethod
+    def crosses_resolved_try_region_boundary(origin_ids, method: IRMethod):
+        # Ordinary control-flow reductions must stay inside either the try body,
+        # the handler body, or outside the region entirely.
+        if not method.resolved_try_regions:
+            return False
+
+        for bounds in method.resolved_try_regions:
+            try_ids = bounds.try_block_ids
+            handler_ids = bounds.handler_block_ids
+            in_try = bool(origin_ids.intersection(try_ids))
+            in_handler = bool(origin_ids.intersection(handler_ids))
+            in_region = in_try or in_handler
+            outside_region = bool(origin_ids.difference(try_ids.union(handler_ids)))
+            if (in_try and in_handler) or (in_region and outside_region):
+                return True
+        return False
+
+    @staticmethod
     def find_dominators(method: IRMethod, reverse_graph=False):
         in_d, out_d = {}, {}
         entry_blocks = set()

@@ -15,6 +15,7 @@ from decompile.passes.dead_code import DeadCodeElimination
 from decompile.passes.defuse import DefUseAnalysis
 from decompile.passes.method_call_prettify import MethodCallPrettify
 from decompile.passes.prop_access_prettify import PropAccessPrettify
+from decompile.passes.process_try_catch_regions import ProcessTryCatchRegions
 from decompile.passes.print_pcode import PrintPcode
 from decompile.passes.live_variable import LiveVariableAnalysis
 from decompile.passes.peephole_opt import PeepholeOptimization
@@ -252,6 +253,7 @@ class Decompiler:
                 ControlFlowStructuringOld().run_on_method(method)
             else:
                 ControlFlowStructuring().run_on_method(method)
+                ProcessTryCatchRegions().run_on_method(method)
 
     @staticmethod
     def _safe_cfg_path(method: IRMethod):

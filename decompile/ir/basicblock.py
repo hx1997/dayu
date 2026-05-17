@@ -16,6 +16,7 @@ class IRBlock:
         self.label2insn_map: typing.Dict[str, typing.Union[NAddressCode, None]] = {}
         self.defs = set()  # populated by the DefUseAnalysis pass
         self.uses = set()  # populated by the DefUseAnalysis pass
+        self.origin_block_ids: typing.Set[int] = set()
 
     def insert_insn(self, insn: NAddressCode, at=None):
         """

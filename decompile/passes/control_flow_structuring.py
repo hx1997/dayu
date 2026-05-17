@@ -19,8 +19,6 @@ class RegionType(IntEnum):
     WhileLoop = auto()
     NaturalLoop = auto()
     Improper = auto()
-
-
 class ControlFlowStructuring(MethodPass):
     """
     Note: This pass doesn't maintain the CFG. It's meant to be used in final stages of decompilation
@@ -92,12 +90,20 @@ class ControlFlowStructuring(MethodPass):
         while is_first or identified:
             is_first = False
             identified = False
+            self.visit = {}
+            self.post = {}
+            self.post_num = {}
             self.post_max = 0
             self.post_ctr = 1
             self.dfs_postorder(method, entry)
+            for block in method.blocks:
+                if block not in self.visit:
+                    self.dfs_postorder(method, block)
             while len(method.blocks) > 1 and self.post_ctr <= self.post_max:
                 n = self.post[self.post_ctr]
-                rtype = self.acyclic_region_type(n, node_set)
+                rtype = self.acyclic_region_type(n, node_set, method)
+                if rtype is not None and CFGUtils.crosses_resolved_try_region_boundary(self.union_origin_block_ids(node_set), method):
+                    rtype = None
                 if rtype is not None:
                     identified = True
                     p = self.reduce(method, rtype, node_set)
@@ -109,6 +115,8 @@ class ControlFlowStructuring(MethodPass):
                         if self.path_back(method, m, n):
                             reach_under = reach_under.union({m})
                     rtype = self.cyclic_region_type(n, reach_under)
+                    if rtype is not None and CFGUtils.crosses_resolved_try_region_boundary(self.union_origin_block_ids(reach_under), method):
+                        rtype = None
                     if rtype is not None and rtype not in [RegionType.NaturalLoop]:
                         identified = True
                         p = self.reduce(method, rtype, reach_under)
@@ -129,7 +137,7 @@ class ControlFlowStructuring(MethodPass):
     def pick_deterministic_node(self, nodes):
         return min(nodes, key=lambda node: self.post_num[node])
 
-    def acyclic_region_type(self, node, nset: OrderedSet):
+    def acyclic_region_type(self, node, nset: OrderedSet, method: IRMethod = None):
         nset.clear()
         n = node
         p = True
@@ -193,6 +201,7 @@ class ControlFlowStructuring(MethodPass):
 
     def reduce(self, method: IRMethod, rtype, node_set):
         node = self.create_node_with_rtype(method, node_set, rtype)
+        node.origin_block_ids = self.union_origin_block_ids(node_set)
         self.replace(method, node, node_set)
         self.struct_type[node] = rtype
         self.structures = self.structures.union({node})
@@ -401,6 +410,12 @@ class ControlFlowStructuring(MethodPass):
             return node
         else:
             return IRBlock(parent_method=parent_method)
+
+    def union_origin_block_ids(self, blocks):
+        origin_ids = set()
+        for block in blocks:
+            origin_ids.update(block.origin_block_ids)
+        return origin_ids
 
 
     def replace(self, method: IRMethod, node, node_set):

@@ -6,7 +6,7 @@ import logging
 from common.simple_lexer import SimpleLexer
 from pandasm.field import PandasmField
 from pandasm.insn import PandasmInsn
-from pandasm.method import PandasmMethod
+from pandasm.method import PandasmMethod, PandasmTryCatchRegion
 from pandasm.pa_class import PandasmClass
 
 logger = logging.getLogger(__name__)
@@ -211,8 +211,17 @@ class PandasmFile(DecompilerInputFile):
                 last_label_name = body_line[:-1]
             elif body_line.startswith('.'):
                 # this is a pseudo-instruction
-                # TODO: implement
-                pass
+                if body_line.startswith('.catchall '):
+                    # format: .catchall try_begin, try_end, handler_begin, handler_end
+                    labels = [s.strip() for s in body_line[len('.catchall '):].split(',')]
+                    region = PandasmTryCatchRegion(
+                        try_begin=labels[0],
+                        try_end=labels[1],
+                        handler_begin=labels[2],
+                        handler_end=labels[3],
+                    )
+                    method.try_catch_regions.append(region)
+                # .catch — typed catch directive; not yet supported, skip silently for now.
             else:
                 # now we have an instruction
                 line_split = body_line.split()

@@ -1,4 +1,4 @@
-from decompile.ir.method import IRMethod
+from decompile.ir.method import IRMethod, ResolvedTryRegion
 from decompile.method_pass import MethodPass
 
 
@@ -7,6 +7,8 @@ class BuildCFG(MethodPass):
         if len(method.blocks) > 1:
             raise Exception(f'{self.__class__.__name__}: Method has more than one block, which could mean \
                 a CFG has already been built. Clear it first by putting all NACs into one IRBlock.')
+
+        insn_order = {insn: idx for idx, insn in enumerate(method.blocks[0].insns)}
 
         block_queue = [*method.blocks]
         while len(block_queue) > 0:
@@ -32,13 +34,13 @@ class BuildCFG(MethodPass):
                         if new_block:
                             block_queue.append(new_block)
 
+        self._split_try_region_boundaries(method)
+
         # blocks ending in a return instruction shouldn't have successors;
         # additionally, blocks ending in an unconditional jump shouldn't have the next instruction as a successor
         # (if the jump target isn't the next instruction), so cut those edges
-        # FIXME: we clear all successors of unconditional throws too, since we don't analyze try-catch structures
-        #  for now; the right way to do this should be connect an unconditional throw block to its handler
         for block in method.blocks:
-            if self.is_return_insn(block.insns[-1].op) or self.is_uncond_throw_insn(block.insns[-1].op):
+            if self.is_return_insn(block.insns[-1].op):
                 for succ in block.successors:
                     succ.remove_predecessor(block)
                 block.clear_successors()
@@ -54,7 +56,77 @@ class BuildCFG(MethodPass):
                 if found and succ:
                     block.remove_successor(succ)
 
+        self._resolve_try_regions(method, insn_order)
+
         return method
+
+    def _split_try_region_boundaries(self, method: IRMethod):
+        if not method.try_regions:
+            return
+
+        boundary_labels = []
+        for region in method.try_regions:
+            boundary_labels.extend([
+                region.try_begin,
+                region.try_end,
+                region.handler_begin,
+                region.handler_end,
+            ])
+
+        # Keep try/catch boundaries aligned with basic-block boundaries so later
+        # passes can talk about regions in terms of whole CFG blocks.
+        for label in boundary_labels:
+            insn = method.get_insn_by_label(label)
+            if insn is None:
+                continue
+            insn.parent_block.split_block(insn)
+
+    def _resolve_try_regions(self, method: IRMethod, insn_order):
+        # origin_block_ids preserve lexical order through later reductions, which
+        # lets try/catch packaging rebuild the region in source order afterward.
+        lexical_blocks = sorted(
+            method.blocks,
+            key=lambda block: min(insn_order[insn] for insn in block.insns),
+        )
+        for idx, block in enumerate(lexical_blocks):
+            block.origin_block_ids = {idx}
+
+        method.resolved_try_regions = []
+        if not method.try_regions:
+            return
+
+        block_order = {block: idx for idx, block in enumerate(lexical_blocks)}
+
+        def label_to_block(label):
+            insn = method.get_insn_by_label(label)
+            return insn.parent_block if insn else None
+
+        for region in method.try_regions:
+            begin_block = label_to_block(region.try_begin)
+            end_block = label_to_block(region.try_end)
+            handler_begin_block = label_to_block(region.handler_begin)
+            handler_end_block = label_to_block(region.handler_end)
+            if None in [begin_block, end_block, handler_begin_block]:
+                continue
+
+            # Panda assembly uses half-open lexical ranges: [try_begin, try_end)
+            # and [handler_begin, handler_end). Convert those label boundaries to
+            # block-id ranges so later passes do not depend on CFG exception edges.
+            begin_idx = block_order[begin_block]
+            end_idx = block_order[end_block]
+            handler_begin_idx = block_order[handler_begin_block]
+            handler_end_idx = block_order[handler_end_block] if handler_end_block is not None else len(lexical_blocks)
+
+            try_block_ids = set(range(begin_idx, end_idx))
+            handler_block_ids = set(range(handler_begin_idx, handler_end_idx))
+            if not try_block_ids or not handler_block_ids:
+                continue
+
+            method.resolved_try_regions.append(ResolvedTryRegion(
+                region=region,
+                try_block_ids=try_block_ids,
+                handler_block_ids=handler_block_ids,
+            ))
 
     def is_branch_insn(self, op):
         if op == 'jmp':
@@ -69,5 +141,3 @@ class BuildCFG(MethodPass):
     def is_return_insn(self, op):
         return op.startswith('return')
 
-    def is_uncond_throw_insn(self, op):
-        return op.startswith('throw')
