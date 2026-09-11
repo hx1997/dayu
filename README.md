@@ -131,7 +131,7 @@ Decompiled:
 
 ![](docs/imgs/cfg_cropImage.png)
 
-This method includes nested `try-catch` regions. dayu now emits `try { ... } catch { ... }` pseudocode for `.catchall` regions, although the result is still more verbose and lower-level than the original ArkTS.
+This method includes nested `try-catch` regions, a structure not normally reflected in the CFG due to its special control flow. dayu now emits `try { ... } catch { ... }` pseudocode for `.catchall` regions (not shown in the above CFG, but present in the final pseudocode), although the result is still more verbose than the original ArkTS.
 
 ## Caveats
 As much as dayu tries to output code that conforms to the syntax of ArkTS/TypeScript, this isn't always possible or easy to achieve (for me). Some points to note:  

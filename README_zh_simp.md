@@ -129,7 +129,7 @@ return v2
 
 ![](docs/imgs/cfg_cropImage.png)
 
-这个方法包含嵌套的 `try-catch` 区域。蒲篮现在已经能够为 `.catchall` 生成 `try { ... } catch { ... }` 形式的伪代码，只是结果相较原始 ArkTS 仍会更冗长，也更偏底层。
+这个方法包含嵌套的 `try-catch` 区域，此种区域的控制流特殊，一般不纳入 CFG 中。蒲篮现在已经能够为 `.catchall` 生成 `try { ... } catch { ... }` 形式的伪代码（CFG 未体现，最终的伪代码中会有），只是结果相较原始 ArkTS 仍会更冗长。
 
 ## 注意事项
 蒲篮尽可能输出合法的 ArkTS/TypeScript 代码，但不是所有情况都能够做到或者容易做到这一点。
