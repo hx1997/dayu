@@ -20,6 +20,7 @@ class NAddressCode:
 
     def __init__(self, parent_block=None, label_name='', comment='', extra_info=None):
         self.label = label_name
+        self.label_aliases = []
         self.comment = comment
         self.extra_info = extra_info
         self.parent_block = parent_block
@@ -83,11 +84,16 @@ class NAddressCode:
         self.parent_block.remove_insn(self)
 
     def format_nac_str_with_label(self, nac_str):
+        labels = [*self.label_aliases]
         if self.label:
+            labels.append(self.label)
+
+        if labels:
+            label_text = '\n'.join(f'{label}:' for label in labels)
             if self.comment:
-                return f'{self.label}:\n{nac_str}  /* {self.comment} */'
+                return f'{label_text}\n{nac_str}  /* {self.comment} */'
             else:
-                return f'{self.label}:\n{nac_str}'
+                return f'{label_text}\n{nac_str}'
         elif self.comment:
             return f'{nac_str}  /* {self.comment} */'
         else:

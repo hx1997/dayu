@@ -18,6 +18,47 @@ class IRBlock:
         self.uses = set()  # populated by the DefUseAnalysis pass
         self.origin_block_ids: typing.Set[int] = set()
 
+    def _register_insn_labels(self, insn: NAddressCode):
+        for label in self._get_insn_labels(insn):
+            self.label2insn_map[label] = insn
+
+    def _unregister_insn_labels(self, insn: NAddressCode):
+        for label in self._get_insn_labels(insn):
+            if self.label2insn_map.get(label) is insn:
+                del self.label2insn_map[label]
+
+    @staticmethod
+    def _get_insn_labels(insn: NAddressCode):
+        """Return all labels owned by *insn* in their rendered order."""
+        labels = []
+        for label in [*getattr(insn, 'label_aliases', []), insn.label]:
+            if label and label not in labels:
+                labels.append(label)
+        return labels
+
+    @staticmethod
+    def _add_labels_to_insn(labels, insn: NAddressCode, block):
+        """Attach labels to an instruction and update its block's label map."""
+        for label in labels:
+            if label == insn.label or label in getattr(insn, 'label_aliases', []):
+                block.label2insn_map[label] = insn
+                continue
+            if insn.label:
+                insn.label_aliases.append(label)
+            else:
+                insn.label = label
+            block.label2insn_map[label] = insn
+
+    def _move_labels_to_next_insn(self, labels, next_insn: NAddressCode):
+        self._add_labels_to_insn(labels, next_insn, self)
+
+    def _move_labels_to_successor(self, labels):
+        if len(self.successors) != 1 or not self.successors[0].insns:
+            return
+
+        successor = self.successors[0]
+        self._add_labels_to_insn(labels, successor.insns[0], successor)
+
     def insert_insn(self, insn: NAddressCode, at=None):
         """
         Insert an instruction
@@ -29,8 +70,7 @@ class IRBlock:
         else:
             self.insns.append(insn)
         insn.parent_block = self
-        if insn.label:
-            self.label2insn_map[insn.label] = insn
+        self._register_insn_labels(insn)
 
     def remove_insn(self, insn: NAddressCode):
         """
@@ -45,24 +85,25 @@ class IRBlock:
         self.insns.clear()
 
     def remove_insn_at(self, at):
-        if at == 0:
-            # if the instruction to be removed is the first in block, move its label (if any) to the next instruction
-            label = self.insns[at].label
-            if label and len(self.insns) > 1:
-                self.insns[1].label = label
-                self.label2insn_map[label] = self.insns[1]
-        else:
-            label = self.insns[at].label
-            if label:
-                del self.label2insn_map[label]
+        insn = self.insns[at]
+        labels = self._get_insn_labels(insn)
+        self._unregister_insn_labels(insn)
+
+        if at == 0 and len(self.insns) > 1:
+            # If the first instruction is removed, preserve all of its labels on
+            # the new first instruction, not just its primary label.
+            self._move_labels_to_next_insn(labels, self.insns[1])
 
         # if the instruction to be removed is control-flow-related, i.e. a jump, return, or a throw,
         # cut edges in the CFG accordingly
         # TODO: handle jumps and COND_THROWs
-        if self.insns[at].type in [NAddressCodeType.UNCOND_THROW, NAddressCodeType.RETURN]:
+        if insn.type in [NAddressCodeType.UNCOND_THROW, NAddressCodeType.RETURN]:
             self.clear_successors()
 
         del self.insns[at]
+
+        if at == 0 and not self.insns:
+            self._move_labels_to_successor(labels)
 
     def erase_from_parent(self):
         if not self.parent_method:

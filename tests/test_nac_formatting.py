@@ -1,6 +1,7 @@
 import unittest
 
-from decompile.ir.nac import AssignNAC, CallNAC, CondJumpNAC, ImportNAC, NAddressCodeType, ReturnNAC
+from decompile.ir.basicblock import IRBlock
+from decompile.ir.nac import AssignNAC, CallNAC, CondJumpNAC, ImportNAC, NAddressCodeType, ReturnNAC, UnknownNAC
 from pandasm.insn import PandasmInsnArgument
 
 
@@ -74,6 +75,57 @@ class NAddressCodeFormattingTests(unittest.TestCase):
             PandasmInsnArgument('reg', 'v0'),
         )
         self.assertEqual(str(insn), 'return v0')
+
+    def test_removing_first_instruction_preserves_all_labels(self):
+        block = IRBlock()
+        removed = UnknownNAC('removed', [], label_name='primary')
+        removed.label_aliases = ['alias_0', 'alias_1']
+        block.insert_insn(removed)
+        remaining = UnknownNAC('remaining', [], label_name='existing')
+        block.insert_insn(remaining)
+
+        block.remove_insn(removed)
+
+        self.assertEqual(remaining.label, 'existing')
+        self.assertEqual(remaining.label_aliases, ['alias_0', 'alias_1', 'primary'])
+        for label in ['alias_0', 'alias_1', 'primary', 'existing']:
+            self.assertIs(block.get_insn_by_label(label), remaining)
+        self.assertEqual(str(remaining), 'alias_0:\nalias_1:\nprimary:\nexisting:\nremaining ')
+
+    def test_removing_only_instruction_moves_all_labels_to_successor(self):
+        block = IRBlock()
+        successor = IRBlock()
+        block.add_successor(successor)
+
+        removed = UnknownNAC('removed', [], label_name='primary')
+        removed.label_aliases = ['alias_0', 'alias_1']
+        block.insert_insn(removed)
+        first_successor_insn = UnknownNAC('successor', [], label_name='successor_label')
+        successor.insert_insn(first_successor_insn)
+
+        block.remove_insn(removed)
+
+        self.assertEqual(first_successor_insn.label, 'successor_label')
+        self.assertEqual(first_successor_insn.label_aliases, ['alias_0', 'alias_1', 'primary'])
+        for label in ['alias_0', 'alias_1', 'primary', 'successor_label']:
+            self.assertIs(successor.get_insn_by_label(label), first_successor_insn)
+
+    def test_removing_non_first_instruction_unregisters_aliases(self):
+        block = IRBlock()
+        first = UnknownNAC('first', [], label_name='first_label')
+        block.insert_insn(first)
+        removed = UnknownNAC('removed', [], label_name='primary')
+        removed.label_aliases = ['alias_0', 'alias_1']
+        block.insert_insn(removed)
+        third = UnknownNAC('third', [], label_name='third_label')
+        block.insert_insn(third)
+
+        block.remove_insn(removed)
+
+        for label in ['primary', 'alias_0', 'alias_1']:
+            self.assertIsNone(block.get_insn_by_label(label))
+        self.assertIs(block.get_insn_by_label('first_label'), first)
+        self.assertIs(block.get_insn_by_label('third_label'), third)
 
 
 if __name__ == '__main__':
