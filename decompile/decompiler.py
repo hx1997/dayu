@@ -166,10 +166,6 @@ class Decompiler:
         self.hlir_to_pseudocode(method)
         self.decompiled_ir_level = DecompileOutputLevel.PSEUDOCODE
         if self.config.output_level is DecompileOutputLevel.PSEUDOCODE:
-            if self.config.view_cfg:
-                cfg_path = self._safe_cfg_path(method)
-                self.write_cfg_to_file(method, cfg_path, True)
-                print(f'CFG saved to {cfg_path}.png', end='\n')
             return method
 
         return method
@@ -253,6 +249,12 @@ class Decompiler:
                 ControlFlowStructuringOld().run_on_method(method)
             else:
                 ControlFlowStructuring().run_on_method(method)
+
+                if self.config.view_cfg:
+                    cfg_path = self._safe_cfg_path(method)
+                    self.write_cfg_to_file(method, cfg_path, True)
+                    print(f'CFG saved to {cfg_path}.png', end='\n')
+
                 ProcessTryCatchRegions().run_on_method(method)
 
     @staticmethod
