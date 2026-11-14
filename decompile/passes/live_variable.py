@@ -1,48 +1,32 @@
-from decompile.ir.basicblock import IRBlock
+from decompile.ir.exception_semantics import handler_live, live_before
 from decompile.ir.method import IRMethod
-from decompile.ir.nac import NAddressCodeType
 from decompile.method_pass import MethodPass
 
 
 class LiveVariableAnalysis(MethodPass):
     def run_on_method(self, method: IRMethod):
-        in_block, out_block = {}, {}
-        # add dummy entry and exit blocks
-        entry_block = IRBlock()
-        exit_block = IRBlock()
-        entry_block.add_successor(method.blocks[0])
-        no_successor_blocks = []
-        for block in method.blocks:
-            if self.is_no_successor_block(block):
-                no_successor_blocks.append(block)
-                block.add_successor(exit_block)
+        in_block = {block: set() for block in method.blocks}
+        out_block = {block: set() for block in method.blocks}
+        changed = True
+        while changed:
+            changed = False
+            for block in reversed(method.blocks):
+                # Normal successors are reached after the whole block. A handler
+                # can be reached in the middle of the block, so its requirements
+                # are applied at each possible throwing instruction instead.
+                normal_out = set()
+                for successor in block.successors:
+                    normal_out.update(in_block[successor])
+                out_block[block] = normal_out
+                exception_live = handler_live(block, in_block)
+                live = normal_out
+                for insn in reversed(block.insns):
+                    live = live_before(insn, live, exception_live)
+                if live != in_block[block]:
+                    in_block[block] = live
+                    changed = True
 
-        extended_block_list = [entry_block, exit_block, *method.blocks]
-        for block in extended_block_list:
-            in_block[block] = set()
-
-        in_changed = False
-        first_time = True
-        while in_changed or first_time:
-            in_changed = False
-            first_time = False
-            for block in extended_block_list:
-                if block != exit_block:
-                    out_b = set()
-                    for succ in block.successors:
-                        out_b = out_b.union(in_block[succ])
-                    out_block[block] = out_b
-                    old_in_block = in_block.copy()
-                    in_block[block] = block.uses.union(out_block[block].difference(block.defs))
-                    if old_in_block != in_block:
-                        in_changed = True
-
-        # remove the dummy blocks
-        method.blocks[0].remove_predecessor(entry_block)
-        for block in no_successor_blocks:
-            block.remove_successor(exit_block)
-
+        self.exception_live = {
+            block: handler_live(block, in_block) for block in method.blocks
+        }
         return in_block, out_block
-
-    def is_no_successor_block(self, block: IRBlock):
-        return len(block.successors) == 0

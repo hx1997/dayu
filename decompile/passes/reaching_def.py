@@ -2,11 +2,16 @@ import typing
 
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.expr import ExprArg
+from decompile.ir.exception_semantics import exception_definitions, may_throw
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType
 from decompile.method_pass import MethodPass
 from decompile.passes.reverse_postorder import ReversePostorder
-from pandasm.insn import PandasmInsnArgument
+
+
+def kill_for_instruction(insn, definitions):
+    destinations = set(insn.get_defs())
+    return {definition for definition in definitions if destinations.intersection(definition.get_defs())}
 
 
 class ReachingDefinitions(MethodPass):
@@ -95,6 +100,8 @@ class ReachingDefinitions(MethodPass):
 
     def reaching_definitions(self, method: IRMethod, rpo: typing.List[IRBlock], gen, kill):
         in_block, out_block = {}, {}
+        self.exception_in = {block: set() for block in method.blocks}
+        self.exception_out = {block: set() for block in method.blocks}
         # add dummy entry and exit blocks
         entry_block = IRBlock()
         exit_block = IRBlock()
@@ -108,6 +115,7 @@ class ReachingDefinitions(MethodPass):
         extended_block_list = [entry_block, exit_block, *rpo]
         for block in extended_block_list:
             out_block[block] = set()
+            self.exception_out.setdefault(block, set())
         gen[exit_block] = set()
         kill[exit_block] = set()
 
@@ -121,11 +129,23 @@ class ReachingDefinitions(MethodPass):
                     in_b = set()
                     for pred in block.predecessors:
                         in_b = in_b.union(out_block[pred])
+                    # A handler may have both normal and exceptional entries.
+                    # Keep definitions from both, but use the pre-throw state for
+                    # every exceptional predecessor.
+                    exception_b = set()
+                    for pred in block.exception_predecessors:
+                        exception_b.update(self.exception_in.get(pred, set()))
+                    exception_b = exception_definitions(exception_b)
+                    in_b.update(exception_b)
                     in_block[block] = in_b
 
-                    old_out_block = out_block.copy()
+                    old_out = out_block[block]
+                    old_exception = self.exception_out[block]
                     out_block[block] = gen[block].union(in_block[block].difference(kill[block]))
-                    if old_out_block != out_block:
+                    self.exception_out[block] = self.exception_state(block, in_block[block])
+                    for handler in block.exception_successors:
+                        self.exception_in[handler].update(self.exception_out[block])
+                    if old_out != out_block[block] or old_exception != self.exception_out[block]:
                         out_changed = True
 
         # remove the dummy blocks
@@ -134,6 +154,17 @@ class ReachingDefinitions(MethodPass):
             block.remove_successor(exit_block)
 
         return in_block, out_block
+
+    def exception_state(self, block, definitions):
+        state = set(definitions)
+        exception_state = set()
+        for insn in block.insns:
+            if may_throw(insn):
+                exception_state.update(exception_definitions(state))
+            state.difference_update(kill_for_instruction(insn, state))
+            if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:
+                state.add(insn)
+        return exception_state
 
     def is_no_successor_block(self, block: IRBlock):
         return len(block.successors) == 0

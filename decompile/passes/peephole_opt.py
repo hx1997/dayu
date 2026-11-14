@@ -6,9 +6,12 @@ from decompile.passes.dead_code import DeadCodeElimination
 
 
 class PeepholeOptimization(MethodPass):
-    def __init__(self, out_l, constrained=False):
+    def __init__(self, out_l, exception_live=None, constrained=False):
         super().__init__()
         self.out_l = out_l
+        # Liveness queries used while testing a peephole rewrite must include
+        # values needed by a handler; otherwise the rewrite can remove them.
+        self.exception_live = exception_live if exception_live is not None else {}
         self.constrained = constrained
 
     def run_on_method(self, method: IRMethod):
@@ -72,7 +75,7 @@ class PeepholeOptimization(MethodPass):
                 # the following optimizations are only viable if the common variable `a` is dead after
                 # the second instruction, so analyze liveness here
                 if idx + 1 < len(block_insns_copy):
-                    live_vars = DeadCodeElimination(self.out_l).analyze_block(block, False, block_insns_copy[idx + 1])
+                    live_vars = DeadCodeElimination(self.out_l, self.exception_live).analyze_block(block, False, block_insns_copy[idx + 1])
                     if block_insns_copy[idx - 1].dst in live_vars or block_insns_copy[idx - 1].dst.ref_obj in live_vars:
                         continue
                 # case 3: collapse "a = b; c = a" into "c = b"

@@ -17,6 +17,7 @@ class CopyPropagation(MethodPass):
         super().__init__()
         self.in_r = in_r
         self.constrained = constrained
+        self.exception_out = {}
 
     def run_on_method(self, method: IRMethod):
         gen, kill = {}, {}
@@ -148,11 +149,17 @@ class CopyPropagation(MethodPass):
             first_time = False
             for block in extended_block_list:
                 if block != entry_block:
-                    if block.predecessors:
-                        in_b = out_block[block.predecessors[0]]
-                        for pred in block.predecessors[1:]:
+                    normal_incoming = block.predecessors
+                    exception_incoming = block.exception_predecessors
+                    if normal_incoming:
+                        in_b = out_block[normal_incoming[0]].copy()
+                        for pred in normal_incoming[1:]:
                             in_b = in_b.intersection(out_block[pred])
                     else:
+                        in_b = OrderedSet()
+                    if exception_incoming:
+                        # A copy proved only on the normal path is not safe in a
+                        # handler, because the exception may happen earlier.
                         in_b = OrderedSet()
                     in_block[block] = in_b
 
