@@ -1,6 +1,7 @@
 import re
 
 from decompile.ir.basicblock import IRBlock
+from decompile.ir.expr import ExprArg
 from decompile.ir.method import IRMethod
 from decompile.method_pass import MethodPass
 from pandasm.insn import PandasmInsnArgument
@@ -34,6 +35,10 @@ class PropAccessPrettify(MethodPass):
         return False
 
     def prop_access_bracket_to_dot(self, arg: PandasmInsnArgument):
+        # Folded expressions contain property nodes below the top-level args.
+        if isinstance(arg, ExprArg):
+            for operand in arg.value:
+                self.prop_access_bracket_to_dot(operand)
         # turn "this['xxx']" into "this.xxx"
         if arg.ref_obj and isinstance(arg.ref_obj, PandasmInsnArgument):
             self.prop_access_bracket_to_dot(arg.ref_obj)

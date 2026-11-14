@@ -25,12 +25,13 @@ class VariableAllocation(MethodPass):
         if insn.type in [NAddressCodeType.VAR_DECL, NAddressCodeType.UNKNOWN]:
             return
         for arg in insn.args:
-            real_arg = arg
-            while real_arg.ref_obj:
-                real_arg = real_arg.ref_obj
-            self.process_arg(real_arg)
+            self.process_arg(arg)
 
     def process_arg(self, real_arg):
+        # Expression operands can themselves be property chains; rename their
+        # bases too, rather than leaving hidden references to VM registers.
+        if real_arg.ref_obj:
+            self.process_arg(real_arg.ref_obj)
         if real_arg.type == 'acc':
             if 'acc' not in self.reg2var_map:
                 self.reg2var_map['acc'] = self.alloc_var()

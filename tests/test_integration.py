@@ -82,6 +82,15 @@ class IntegrationTests(unittest.TestCase):
         self.assertEqual(output.count('v2.width / a2'), 1)
         self.assertTrue(output.endswith('return v2'))
 
+    def test_nested_width_expression_has_no_unallocated_acc(self):
+        output = self.decompile_method_output(
+            IMAGE_EXAMPLE_ABC, IMAGE_EXAMPLE_PANDASM,
+            'ohos.samples.image.entry@photomodify.ets.components.pages.EditImage',
+            'computeDpiPosition',
+        )
+        self.assertRegex(output, r'(v\d+) = \(\1\.width \+ "\*"\) \+ v\d+')
+        self.assertNotRegex(output, r'\bacc\b')
+
     def test_cli_output_file_writes_decompiled_code(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / 'decompiled.txt'
