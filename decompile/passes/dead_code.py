@@ -13,7 +13,7 @@ class DeadCodeElimination(MethodPass):
         self.out_l = out_l
 
     def run_on_method(self, method: IRMethod):
-        for block in method.blocks:
+        for block in method.blocks.copy():
             self.analyze_block(block)
 
     def analyze_block(self, block: IRBlock, eliminate_dead_code=True, stop_after_insn=None):
@@ -34,8 +34,11 @@ class DeadCodeElimination(MethodPass):
                 break
 
         # it could be possible that after elimination, this block is empty
-        # if so, remove this block
+        # in that case, remove this block
         if len(block.insns) == 0:
+            for predecessor in block.predecessors.copy():
+                for successor in block.successors.copy():
+                    predecessor.add_successor(successor)
             block.clear_successors()
             block.clear_predecessors()
             block.erase_from_parent()
