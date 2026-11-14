@@ -49,6 +49,10 @@ class DecompilerConfig:
         self.view_cfg = False
         self.cfg_exception_edges = False
 
+        # Operations treated as potentially throwing by dataflow optimizations.
+        # Keep property access opt-in because many Ark bytecode property reads are plain loads.
+        self.potentially_throwing_operations: typing.Set[str] = set()
+
     def set_config(self, config: dict):
         self.abc_file = config.get('abc', self.abc_file)
         self.pandasm_file = config.get('pandasm', self.pandasm_file)
@@ -73,6 +77,8 @@ class DecompilerConfig:
         self.extra_mlir_passes = config.get('extra_mlir_passes', self.extra_mlir_passes)
         self.view_cfg = config.get('view_cfg', self.view_cfg)
         self.cfg_exception_edges = config.get('cfg_exception_edges', self.cfg_exception_edges)
+        self.potentially_throwing_operations = set(config.get(
+            'potentially_throwing_operations', self.potentially_throwing_operations))
 
 
 class DecompileOutputLevel(IntEnum):

@@ -17,23 +17,39 @@ def operator_may_throw(op):
     return bool(op) and op not in ('!', '===', '!==')
 
 
-def argument_may_throw(arg):
+def argument_may_throw(arg, potentially_throwing_operations=None):
+    # Direct callers keep the historical conservative behavior; configured
+    # decompilation passes can explicitly opt property access out.
+    if potentially_throwing_operations is None:
+        potentially_throwing_operations = {'property_access'}
     # These operations may fail before the assignment completes, so the
     # destination must still be treated as its old value on the exception path.
-    if arg.ref_obj or arg.type in ('object', 'array'):
+    if 'property_access' in potentially_throwing_operations and arg.ref_obj:
+        return True
+    if arg.type in ('object', 'array'):
         return True
     if isinstance(arg, ExprArg):
-        return arg.expr_type != 'arith' or operator_may_throw(arg.op) or any(argument_may_throw(a) for a in arg.value)
+        return (arg.expr_type != 'arith' or operator_may_throw(arg.op)
+                or any(argument_may_throw(a, potentially_throwing_operations) for a in arg.value))
     return False
 
 
-def may_throw(insn):
+def contains_property_access(arg):
+    if arg.ref_obj:
+        return True
+    if isinstance(arg, ExprArg):
+        return any(contains_property_access(value) for value in arg.value)
+    return False
+
+
+def may_throw(insn, potentially_throwing_operations=None):
     # Unknown and effectful NACs may throw. Treating them this way keeps the
     # optimizer from deleting work whose failure is observable.
     if insn.type in (T.CALL, T.UNCOND_THROW, T.COND_THROW, T.UNKNOWN, T.IMPORT):
         return True
     if insn.type == T.ASSIGN:
-        return operator_may_throw(insn.op) or any(argument_may_throw(a) for a in insn.args)
+        return (operator_may_throw(insn.op)
+                or any(argument_may_throw(a, potentially_throwing_operations) for a in insn.args))
     return False
 
 
@@ -46,11 +62,11 @@ def handler_live(block, in_block):
     return values - {ACC}
 
 
-def live_before(insn, live_after, exception_live):
+def live_before(insn, live_after, exception_live, potentially_throwing_operations=None):
     # A throwing instruction can reach the handler before its normal write, so
     # the handler's requirements must be added to the state before this insn.
     live = set(insn.get_uses()) | (live_after - set(insn.get_defs()))
-    if may_throw(insn):
+    if may_throw(insn, potentially_throwing_operations):
         live.update(exception_live)
     return live
 

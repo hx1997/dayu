@@ -191,22 +191,27 @@ class Decompiler:
             # CFG-changing passes can move handler blocks, so rebuild the
             # exceptional relationships before each dataflow round.
             method.rebuild_exception_edges()
-            in_r, out_r = ReachingDefinitions().run_on_method(method)
+            in_r, out_r = ReachingDefinitions(
+                self.config.potentially_throwing_operations).run_on_method(method)
             if DecompileOutputLevel.MEDIUM_LEVEL_IR in self.config.copy_propagation_enabled_levels:
-                CopyPropagation(in_r, constrained=True).run_on_method(method)
+                CopyPropagation(in_r, constrained=True,
+                                 potentially_throwing_operations=self.config.potentially_throwing_operations).run_on_method(method)
 
             DefUseAnalysis().run_on_method(method)
-            liveness = LiveVariableAnalysis()
+            liveness = LiveVariableAnalysis(self.config.potentially_throwing_operations)
             in_l, out_l = liveness.run_on_method(method)
             if DecompileOutputLevel.MEDIUM_LEVEL_IR in self.config.dead_code_elimination_enabled_levels:
-                DeadCodeElimination(out_l, liveness.exception_live).run_on_method(method)
+                DeadCodeElimination(out_l, liveness.exception_live,
+                                    self.config.potentially_throwing_operations).run_on_method(method)
 
             # Recompute liveness after DCE before peephole queries.
             DefUseAnalysis().run_on_method(method)
-            liveness = LiveVariableAnalysis()
+            liveness = LiveVariableAnalysis(self.config.potentially_throwing_operations)
             in_l, out_l = liveness.run_on_method(method)
             if DecompileOutputLevel.MEDIUM_LEVEL_IR in self.config.peephole_optimization_enabled_levels:
-                PeepholeOptimization(out_l, liveness.exception_live, constrained=True).run_on_method(method)
+                PeepholeOptimization(
+                    out_l, liveness.exception_live, constrained=True,
+                    potentially_throwing_operations=self.config.potentially_throwing_operations).run_on_method(method)
 
             # run any user-specified extra passes
             for extra_pass in self.config.extra_mlir_passes:
@@ -226,22 +231,27 @@ class Decompiler:
         # convert to high-level IR
         # Rebuild exception edges after the MLIR stage has changed the blocks.
         method.rebuild_exception_edges()
-        in_r, out_r = ReachingDefinitions().run_on_method(method)
+        in_r, out_r = ReachingDefinitions(
+            self.config.potentially_throwing_operations).run_on_method(method)
         if DecompileOutputLevel.HIGH_LEVEL_IR in self.config.copy_propagation_enabled_levels:
-            CopyPropagation(in_r, constrained=False).run_on_method(method)
+            CopyPropagation(in_r, constrained=False,
+                             potentially_throwing_operations=self.config.potentially_throwing_operations).run_on_method(method)
 
         DefUseAnalysis().run_on_method(method)
-        liveness = LiveVariableAnalysis()
+        liveness = LiveVariableAnalysis(self.config.potentially_throwing_operations)
         in_l, out_l = liveness.run_on_method(method)
         if DecompileOutputLevel.HIGH_LEVEL_IR in self.config.dead_code_elimination_enabled_levels:
-            DeadCodeElimination(out_l, liveness.exception_live).run_on_method(method)
+            DeadCodeElimination(out_l, liveness.exception_live,
+                                self.config.potentially_throwing_operations).run_on_method(method)
 
         # Recompute liveness after DCE before peephole queries.
         DefUseAnalysis().run_on_method(method)
-        liveness = LiveVariableAnalysis()
+        liveness = LiveVariableAnalysis(self.config.potentially_throwing_operations)
         in_l, out_l = liveness.run_on_method(method)
         if DecompileOutputLevel.HIGH_LEVEL_IR in self.config.peephole_optimization_enabled_levels:
-            PeepholeOptimization(out_l, liveness.exception_live, constrained=False).run_on_method(method)
+            PeepholeOptimization(
+                out_l, liveness.exception_live, constrained=False,
+                potentially_throwing_operations=self.config.potentially_throwing_operations).run_on_method(method)
 
     def hlir_to_pseudocode(self, method: IRMethod):
         # convert to pseudocode

@@ -14,10 +14,11 @@ from pandasm.insn import PandasmInsnArgument
 
 
 class CopyPropagation(MethodPass):
-    def __init__(self, in_r, constrained=False):
+    def __init__(self, in_r, constrained=False, potentially_throwing_operations=None):
         super().__init__()
         self.in_r = in_r
         self.constrained = constrained
+        self.potentially_throwing_operations = potentially_throwing_operations
         self.exception_out = {}
 
     def run_on_method(self, method: IRMethod):
@@ -73,8 +74,7 @@ class CopyPropagation(MethodPass):
 
         return gen_block, kill_block
 
-    @staticmethod
-    def is_copy_candidate(insn):
+    def is_copy_candidate(self, insn):
         if insn.type != NAddressCodeType.ASSIGN:
             return False
         # In x = x + 1, the RHS reads the old x. After the write, x no longer
@@ -84,7 +84,7 @@ class CopyPropagation(MethodPass):
         # DCE keeps operations that may throw, even when their result is unused.
         # Expanding those operations would leave both the original evaluation and
         # the new one. Share DCE's rule so getters and conversions run only once.
-        return not may_throw(insn)
+        return not may_throw(insn, self.potentially_throwing_operations)
 
     def collect_copies(self, method: IRMethod, stop_on_insn=None):
         copies = OrderedSet()

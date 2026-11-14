@@ -4,6 +4,10 @@ from decompile.method_pass import MethodPass
 
 
 class LiveVariableAnalysis(MethodPass):
+    def __init__(self, potentially_throwing_operations=None):
+        super().__init__()
+        self.potentially_throwing_operations = potentially_throwing_operations
+
     def run_on_method(self, method: IRMethod):
         in_block = {block: set() for block in method.blocks}
         out_block = {block: set() for block in method.blocks}
@@ -21,7 +25,7 @@ class LiveVariableAnalysis(MethodPass):
                 exception_live = handler_live(block, in_block)
                 live = normal_out
                 for insn in reversed(block.insns):
-                    live = live_before(insn, live, exception_live)
+                    live = live_before(insn, live, exception_live, self.potentially_throwing_operations)
                 if live != in_block[block]:
                     in_block[block] = live
                     changed = True

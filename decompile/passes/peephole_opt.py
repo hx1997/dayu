@@ -1,5 +1,5 @@
 from decompile.ir.basicblock import IRBlock
-from decompile.ir.exception_semantics import live_before
+from decompile.ir.exception_semantics import contains_property_access, live_before, may_throw
 from decompile.ir.expr import ExprArg
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType
@@ -8,13 +8,15 @@ from decompile.passes.dead_code import DeadCodeElimination
 
 
 class PeepholeOptimization(MethodPass):
-    def __init__(self, out_l, exception_live=None, constrained=False):
+    def __init__(self, out_l, exception_live=None, constrained=False,
+                 potentially_throwing_operations=None):
         super().__init__()
         self.out_l = out_l
         # Liveness queries used while testing a peephole rewrite must include
         # values needed by a handler; otherwise the rewrite can remove them.
         self.exception_live = exception_live if exception_live is not None else {}
         self.constrained = constrained
+        self.potentially_throwing_operations = potentially_throwing_operations
 
     def run_on_method(self, method: IRMethod):
         for block in method.blocks:
@@ -40,12 +42,15 @@ class PeepholeOptimization(MethodPass):
         live_after = {}
         for insn in reversed(block.insns):
             live_after[insn] = live
-            live = live_before(insn, live, exception_live)
+            live = live_before(insn, live, exception_live, self.potentially_throwing_operations)
 
         for first, second in zip(block.insns.copy(), block.insns[1:].copy()):
             if first not in block.insns or second not in block.insns:
                 continue
             if first.type != NAddressCodeType.ASSIGN or second.type != NAddressCodeType.ASSIGN:
+                continue
+            if ('property_access' in (self.potentially_throwing_operations or set())
+                    and contains_property_access(first.src)):
                 continue
             if second.op or second.src2 is not None or second.src != first.dst:
                 continue
@@ -69,6 +74,9 @@ class PeepholeOptimization(MethodPass):
             if first not in block.insns or second not in block.insns:
                 continue
             if first.type != NAddressCodeType.ASSIGN:
+                continue
+            if ('property_access' in (self.potentially_throwing_operations or set())
+                    and contains_property_access(first.src)):
                 continue
             temp = first.dst
             if temp.type not in ('reg', 'acc') or temp.ref_obj:
@@ -100,7 +108,9 @@ class PeepholeOptimization(MethodPass):
             if temp in exception_live:
                 continue
             position = block.insns.index(second)
-            live_after = (DeadCodeElimination(self.out_l, self.exception_live).analyze_block(
+            live_after = (DeadCodeElimination(
+                self.out_l, self.exception_live,
+                self.potentially_throwing_operations).analyze_block(
                 block, False, block.insns[position + 1])
                 if position + 1 < len(block.insns) else self.out_l[block])
             # A self-update consumes the old value once and writes a new one.
@@ -144,8 +154,20 @@ class PeepholeOptimization(MethodPass):
                 # the previous instruction could have already been eliminated in the last iteration, in which case
                 # if we proceed to the following cases we'll be looking at a non-existent instruction
                 continue
+            previous = block_insns_copy[idx - 1]
+            # These old folding rules substitute a value, not a computation.
+            # A handler may still need the completed write before the next throw.
+            if previous.op or previous.src2 is not None or may_throw(previous, self.potentially_throwing_operations):
+                continue
+            if ('property_access' in (self.potentially_throwing_operations or set())
+                    and any(contains_property_access(arg) for arg in insn.args)):
+                continue
+            if previous.dst in self.exception_live.get(block, set()):
+                continue
+            if insn.label or insn.label_aliases:
+                continue
             # case 1: eliminate "a = b; b = a" by removing "b = a"
-            elif (insn.src == block_insns_copy[idx - 1].dst and insn.dst == block_insns_copy[idx - 1].src
+            if (insn.src == block_insns_copy[idx - 1].dst and insn.dst == block_insns_copy[idx - 1].src
                   and insn.op == '' and block_insns_copy[idx - 1].op == ''):
                 insn.erase_from_parent()
             # case 2: collapse "a = b; a = a['xxx']" into "a = b['xxx']"
@@ -160,10 +182,14 @@ class PeepholeOptimization(MethodPass):
             else:
                 # the following optimizations are only viable if the common variable `a` is dead after
                 # the second instruction, so analyze liveness here
-                if idx + 1 < len(block_insns_copy):
-                    live_vars = DeadCodeElimination(self.out_l, self.exception_live).analyze_block(block, False, block_insns_copy[idx + 1])
-                    if block_insns_copy[idx - 1].dst in live_vars or block_insns_copy[idx - 1].dst.ref_obj in live_vars:
-                        continue
+                position = block.insns.index(insn)
+                live_vars = (DeadCodeElimination(
+                    self.out_l, self.exception_live,
+                    self.potentially_throwing_operations).analyze_block(
+                    block, False, block.insns[position + 1])
+                    if position + 1 < len(block.insns) else self.out_l[block])
+                if previous.dst in live_vars or previous.dst.ref_obj in live_vars:
+                    continue
                 # case 3: collapse "a = b; c = a" into "c = b"
                 # take extra care that the two instructions don't both have an operator on the rhs
                 if insn.src == block_insns_copy[idx - 1].dst and not (insn.op and block_insns_copy[idx - 1].op):

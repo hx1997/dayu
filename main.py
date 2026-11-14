@@ -21,6 +21,8 @@ def parse_args():
     parser.add_argument('-dme', '--decompile-method', type=str, help='decompile the specified method; must be specified in the format "<class name>.<method name>"')
     parser.add_argument('-cfg', '--view-cfg', action='store_true', help='display the Control Flow Graph (CFG) of the specified method (graphviz required); must specify method with -dme')
     parser.add_argument('--cfg-exception-edges', action='store_true', help='include dashed exception edges in the CFG (use with -cfg)')
+    parser.add_argument('--potentially-throwing-operations', nargs='*', choices=['property-access'],
+                        metavar='OPERATION', help='treat selected operations as potentially throwing')
     parser.add_argument('-abc', type=str, help='specify the input abc file')
     parser.add_argument('-pa', type=str, help='specify the input text-form Panda Assembly file')
     parser.add_argument('-O', '--output-level', type=str, help='output decompiled code at the specified level (possible values: llir, mlir, hlir, pcode, default: pcode)')
@@ -92,7 +94,11 @@ def decompile(args, abcfile, pafile):
         'pandasm': pafile,
         'output_level': output_level_str_to_obj[args.output_level] if args.output_level else DecompileOutputLevel.PSEUDOCODE,
         'view_cfg': args.view_cfg,
-        'cfg_exception_edges': args.cfg_exception_edges
+        'cfg_exception_edges': args.cfg_exception_edges,
+        'potentially_throwing_operations': {
+            'property_access' for operation in (args.potentially_throwing_operations or [])
+            if operation == 'property-access'
+        }
     })
     if args.decompile_method:
         class_name = '.'.join(args.decompile_method.split('.')[:-1])

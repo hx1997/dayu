@@ -15,6 +15,10 @@ def kill_for_instruction(insn, definitions):
 
 
 class ReachingDefinitions(MethodPass):
+    def __init__(self, potentially_throwing_operations=None):
+        super().__init__()
+        self.potentially_throwing_operations = potentially_throwing_operations
+
     def run_on_method(self, method: IRMethod):
         gen, kill = {}, {}
         copies = self.collect_copies(method)
@@ -134,8 +138,9 @@ class ReachingDefinitions(MethodPass):
                     # every exceptional predecessor.
                     exception_b = set()
                     for pred in block.exception_predecessors:
-                        exception_b.update(self.exception_in.get(pred, set()))
+                        exception_b.update(self.exception_out[pred])
                     exception_b = exception_definitions(exception_b)
+                    self.exception_in[block] = exception_b
                     in_b.update(exception_b)
                     in_block[block] = in_b
 
@@ -143,8 +148,6 @@ class ReachingDefinitions(MethodPass):
                     old_exception = self.exception_out[block]
                     out_block[block] = gen[block].union(in_block[block].difference(kill[block]))
                     self.exception_out[block] = self.exception_state(block, in_block[block])
-                    for handler in block.exception_successors:
-                        self.exception_in[handler].update(self.exception_out[block])
                     if old_out != out_block[block] or old_exception != self.exception_out[block]:
                         out_changed = True
 
@@ -159,7 +162,7 @@ class ReachingDefinitions(MethodPass):
         state = set(definitions)
         exception_state = set()
         for insn in block.insns:
-            if may_throw(insn):
+            if may_throw(insn, self.potentially_throwing_operations):
                 exception_state.update(exception_definitions(state))
             state.difference_update(kill_for_instruction(insn, state))
             if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:

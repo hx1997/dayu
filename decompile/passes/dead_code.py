@@ -6,13 +6,14 @@ from decompile.method_pass import MethodPass
 
 
 class DeadCodeElimination(MethodPass):
-    def __init__(self, out_l, exception_live=None):
+    def __init__(self, out_l, exception_live=None, potentially_throwing_operations=None):
         """
         :param out_l: result from LiveVariableAnalysis
         """
         super().__init__()
         self.out_l = out_l
         self.exception_live = exception_live if exception_live is not None else {}
+        self.potentially_throwing_operations = potentially_throwing_operations
 
     def run_on_method(self, method: IRMethod):
         for block in method.blocks.copy():
@@ -61,9 +62,10 @@ class DeadCodeElimination(MethodPass):
         # the location pointed to by reg:v0 could be accessible outside the method, and therefore
         # reg:v0['xxx'], too, could be used elsewhere outside this method, so optimizing it would be wrong
         dst = insn.get_defs()[0]
-        if dst not in live_vars and dst.type != 'lexvar' and not dst.ref_obj and not may_throw(insn):
+        if dst not in live_vars and dst.type != 'lexvar' and not dst.ref_obj and not may_throw(insn, self.potentially_throwing_operations):
             # print(f'{insn} is dead code')
             insn.erase_from_parent()
 
     def update_live_vars(self, insn, live_vars: set, exception_live=None):
-        return live_before(insn, live_vars, exception_live if exception_live is not None else set())
+        return live_before(insn, live_vars, exception_live if exception_live is not None else set(),
+                          self.potentially_throwing_operations)
