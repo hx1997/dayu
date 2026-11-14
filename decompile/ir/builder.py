@@ -99,6 +99,7 @@ class IRBuilder:
             next_insn = self.insert_point[0].insns[next_insn_idx]
             self.insert_point[0].split_block(next_insn, False)
 
+        self.insert_point[0].clear_successors()
         insn = UncondThrowNAC(exception=exception, label_name=label)
         self.insert(insn)
 

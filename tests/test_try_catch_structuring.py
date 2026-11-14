@@ -6,6 +6,10 @@ from decompile.config import DecompilerConfig, DecompileGranularity, DecompileOu
 from decompile.decompiler import Decompiler
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.method import IRMethod, ResolvedTryRegion
+from decompile.ir.builder import IRBuilder
+from decompile.ir.nac import UnknownNAC, NAddressCodeType
+from decompile.passes.buildcfg import BuildCFG
+from pandasm.insn import PandasmInsnArgument
 from pandasm.method import PandasmTryCatchRegion
 from pandasm.reader import PandasmReader
 
@@ -54,6 +58,53 @@ class TryCatchStructuringTests(unittest.TestCase):
         self.assertEqual(try_block.exception_successors, [handler_block])
         self.assertEqual(handler_block.exception_predecessors, [try_block])
         self.assertEqual(handler_block.predecessors, [])
+
+    def test_raw_throw_ends_block_without_fallthrough(self):
+        method = IRMethod('throw_then_code')
+        block = IRBlock(method)
+        block.insert_insn(UnknownNAC('throw'))
+        block.insert_insn(UnknownNAC('returnundefined'))
+
+        BuildCFG().run_on_method(method)
+
+        self.assertEqual(len(method.blocks), 2)
+        self.assertEqual([i.op for i in block.insns], ['throw'])
+        self.assertEqual(block.successors, [])
+        self.assertEqual(method.blocks[1].predecessors, [])
+
+    def test_builder_throw_clears_normal_but_keeps_exception_edges(self):
+        method = IRMethod('builder_throw')
+        block = IRBlock(method)
+        continuation = IRBlock(method)
+        handler = IRBlock(method)
+        block.add_successor(continuation)
+        block.add_exception_successor(handler)
+        builder = IRBuilder(None)
+        builder.set_insert_point(block)
+
+        builder.create_uncond_throw(PandasmInsnArgument('acc'))
+
+        self.assertEqual(block.successors, [])
+        self.assertEqual(continuation.predecessors, [])
+        self.assertEqual(block.exception_successors, [handler])
+        self.assertEqual(handler.exception_predecessors, [block])
+
+    def test_real_handler_rethrow_has_no_normal_successor(self):
+        config = DecompilerConfig({
+            'abc': AbcReader.from_file(MODULES_ABC),
+            'pandasm': PandasmReader.from_file(MODULES_PANDASM),
+            'class': 'com.example.myapplication.entry.ets.entryability.EntryAbility',
+            'method': 'func_main_0',
+            'output_level': DecompileOutputLevel.HIGH_LEVEL_IR,
+        })
+        method = Decompiler(config).decompile()
+        handler = method.get_insn_by_label('handler_begin_label_0_0').parent_block
+        continuation = method.get_insn_by_label('handler_end_label_0_0').parent_block
+
+        self.assertEqual(handler.insns[-1].type, NAddressCodeType.UNCOND_THROW)
+        self.assertEqual(handler.successors, [])
+        self.assertNotIn(handler, continuation.predecessors)
+        self.assertTrue(continuation.predecessors)
 
     def test_single_try_catch_is_emitted(self):
         output = decompile_method_output(

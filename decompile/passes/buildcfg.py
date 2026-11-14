@@ -15,6 +15,12 @@ class BuildCFG(MethodPass):
             cur_block = block_queue.pop(0)
             for i, insn in enumerate(cur_block.insns):
                 branch_type = self.is_branch_insn(insn.op)
+                if insn.op == 'throw':
+                    if i + 1 < len(cur_block.insns):
+                        new_block = cur_block.split_block(cur_block.insns[i + 1])
+                        if new_block:
+                            block_queue.append(new_block)
+                    break
                 if branch_type:
                     # if this is a branch instruction, we need to make two new nodes in the CFG
                     # first, for the next instruction (a branch instruction marks the end of a basic block,
@@ -36,13 +42,11 @@ class BuildCFG(MethodPass):
 
         self._split_try_region_boundaries(method)
 
-        # blocks ending in a return instruction shouldn't have successors;
+        # Return and unconditional throw blocks have no normal successors;
         # additionally, blocks ending in an unconditional jump shouldn't have the next instruction as a successor
         # (if the jump target isn't the next instruction), so cut those edges
         for block in method.blocks:
-            if self.is_return_insn(block.insns[-1].op):
-                for succ in block.successors:
-                    succ.remove_predecessor(block)
+            if self.is_return_insn(block.insns[-1].op) or block.insns[-1].op == 'throw':
                 block.clear_successors()
             if self.is_branch_insn(block.insns[-1].op) == 'uncond':
                 target_insn = method.get_insn_by_label(block.insns[-1].args[0])
