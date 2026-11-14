@@ -4,7 +4,7 @@ from ordered_set import OrderedSet
 
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.expr import ExprArg
-from decompile.ir.exception_semantics import may_throw
+from decompile.ir.exception_semantics import contains_property_access, may_throw
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType, NAddressCode
 from decompile.method_pass import MethodPass
@@ -80,6 +80,10 @@ class CopyPropagation(MethodPass):
         # In x = x + 1, the RHS reads the old x. After the write, x no longer
         # means that old value, so expanding it as x + 1 would add one again.
         if insn.dst in insn.get_uses():
+            return False
+        # Property reads can observe changing state even when assumed not to throw.
+        # Leave them to single-use movement, which preserves evaluation count and order.
+        if any(contains_property_access(arg) for arg in insn.args[1:]):
             return False
         # DCE keeps operations that may throw, even when their result is unused.
         # Expanding those operations would leave both the original evaluation and

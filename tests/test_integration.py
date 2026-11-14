@@ -62,8 +62,8 @@ class IntegrationTests(unittest.TestCase):
         # The result copy folds into the increment without evaluating it twice.
         self.assertRegex(output, r'(v\d+) = __ToNumeric__\(v0\)\nv0 = \1 \+ 0x1\n')
         self.assertEqual(output.count('"world" + v0'), 1)
-        self.assertIn('v2 = ("world" + v0) + ""', output)
-        self.assertIn('v3 = hilog.info(hilog, 0x0, "hello", v2)', output)
+        self.assertIn('hilog.info(hilog, 0x0, "hello", (("world" + v0) + ""))', output)
+        self.assertEqual(output.count('hilog.info'), 1)
 
     def test_decompile_hwsample_image_method_matches_golden_snippets(self):
         output = self.decompile_method_output(

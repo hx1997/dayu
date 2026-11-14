@@ -4,6 +4,7 @@ from decompile.ir.basicblock import IRBlock
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import AssignNAC, ReturnNAC
 from decompile.ir.exception_semantics import may_throw
+from decompile.passes.copy_propagation import CopyPropagation
 from decompile.passes.dead_code import DeadCodeElimination
 from decompile.passes.live_variable import LiveVariableAnalysis
 from decompile.passes.peephole_opt import PeepholeOptimization
@@ -14,6 +15,15 @@ class PotentiallyThrowingOperationsTests(unittest.TestCase):
     def property_read(self):
         return AssignNAC('', Arg('reg', 'value'),
                          Arg('field', 'property', Arg('reg', 'object')))
+
+    def test_nonthrowing_property_read_is_left_for_single_use_movement(self):
+        # Nonthrowing reads still observe state; propagation must not duplicate
+        # them or move them past the work that computes a call's arguments.
+        read = self.property_read()
+        propagation = CopyPropagation({}, potentially_throwing_operations=set())
+        self.assertFalse(propagation.is_copy_candidate(read))
+        self.assertTrue(propagation.is_copy_candidate(
+            AssignNAC('', Arg('reg', 'copy'), Arg('reg', 'source'))))
 
     def test_property_access_is_opt_in_for_analysis(self):
         read = self.property_read()
