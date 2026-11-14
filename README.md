@@ -28,6 +28,8 @@ options:
                         decompile the specified method; must be specified in the format "<class name>.<method name>"
   -cfg, --view-cfg      display the Control Flow Graph (CFG) of the specified method (graphviz required); must specify
                         method with -dme
+  --cfg-exception-edges
+                        include dashed exception edges in the CFG (use with -cfg; hidden by default)
   -abc ABC              specify the input abc file
   -pa PA                specify the input text-form Panda Assembly file
   -O OUTPUT_LEVEL, --output-level OUTPUT_LEVEL
@@ -131,7 +133,9 @@ Decompiled:
 
 ![](docs/imgs/cfg_cropImage.png)
 
-This method includes nested `try-catch` regions, a structure not normally reflected in the CFG due to its special control flow. dayu now emits `try { ... } catch { ... }` pseudocode for `.catchall` regions (not shown in the above CFG, but present in the final pseudocode), although the result is still more verbose than the original ArkTS.
+This method includes nested `try-catch` regions. dayu records exception edges separately from normal control-flow edges and draws only normal edges by default. As a result, handler nodes may have no visible predecessors or appear isolated because their incoming exception edges are hidden. Use `-cfg --cfg-exception-edges` to include exception edges, drawn as dashed lines labeled `exception`.
+
+The CFG above is generated before try-catch packaging. The final pseudocode emits `.catchall` regions as `try { ... } catch { ... }`, although the result is still more verbose than the original ArkTS.
 
 ## Caveats
 As much as dayu tries to output code that conforms to the syntax of ArkTS/TypeScript, this isn't always possible or easy to achieve (for me). Some points to note:  

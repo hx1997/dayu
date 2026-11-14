@@ -137,7 +137,7 @@ class Decompiler:
         if self.config.output_level is DecompileOutputLevel.LOW_LEVEL_IR:
             if self.config.view_cfg:
                 cfg_path = self._safe_cfg_path(method)
-                self.write_cfg_to_file(method, cfg_path, True)
+                self.write_cfg_to_file(method, cfg_path, True, self.config.cfg_exception_edges)
                 print(f'CFG saved to {cfg_path}.png', end='\n')
             return method
 
@@ -150,7 +150,7 @@ class Decompiler:
         if self.config.output_level is DecompileOutputLevel.MEDIUM_LEVEL_IR:
             if self.config.view_cfg:
                 cfg_path = self._safe_cfg_path(method)
-                self.write_cfg_to_file(method, cfg_path, True)
+                self.write_cfg_to_file(method, cfg_path, True, self.config.cfg_exception_edges)
                 print(f'CFG saved to {cfg_path}.png', end='\n')
             return method
 
@@ -159,7 +159,7 @@ class Decompiler:
         if self.config.output_level is DecompileOutputLevel.HIGH_LEVEL_IR:
             if self.config.view_cfg:
                 cfg_path = self._safe_cfg_path(method)
-                self.write_cfg_to_file(method, cfg_path, True)
+                self.write_cfg_to_file(method, cfg_path, True, self.config.cfg_exception_edges)
                 print(f'CFG saved to {cfg_path}.png', end='\n')
             return method
 
@@ -252,7 +252,7 @@ class Decompiler:
 
                 if self.config.view_cfg:
                     cfg_path = self._safe_cfg_path(method)
-                    self.write_cfg_to_file(method, cfg_path, True)
+                    self.write_cfg_to_file(method, cfg_path, True, self.config.cfg_exception_edges)
                     print(f'CFG saved to {cfg_path}.png', end='\n')
 
                 ProcessTryCatchRegions().run_on_method(method)
@@ -263,8 +263,8 @@ class Decompiler:
         return f'cfg/cfg_{safe_name}'
 
     @staticmethod
-    def write_cfg_to_file(method: IRMethod, output_path, view=False):
-        ViewCFG(output_path, view).run_on_method(method)
+    def write_cfg_to_file(method: IRMethod, output_path, view=False, show_exception_edges=False):
+        ViewCFG(output_path, view, show_exception_edges).run_on_method(method)
 
     def print_ir(self, method: IRMethod):
         if self.decompiled_ir_level is DecompileOutputLevel.PSEUDOCODE:

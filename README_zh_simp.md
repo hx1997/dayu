@@ -28,6 +28,8 @@ options:
                         decompile the specified method; must be specified in the format "<class name>.<method name>"
   -cfg, --view-cfg      display the Control Flow Graph (CFG) of the specified method (graphviz required); must specify
                         method with -dme
+  --cfg-exception-edges
+                        include dashed exception edges in the CFG (use with -cfg; hidden by default)
   -abc ABC              specify the input abc file
   -pa PA                specify the input text-form Panda Assembly file
   -O OUTPUT_LEVEL, --output-level OUTPUT_LEVEL
@@ -129,7 +131,9 @@ return v2
 
 ![](docs/imgs/cfg_cropImage.png)
 
-这个方法包含嵌套的 `try-catch` 区域，此种区域的控制流特殊，一般不纳入 CFG 中。蒲篮现在已经能够为 `.catchall` 生成 `try { ... } catch { ... }` 形式的伪代码（CFG 未体现，最终的伪代码中会有），只是结果相较原始 ArkTS 仍会更冗长。
+这个方法包含嵌套的 `try-catch` 区域。蒲篮将异常边与普通控制流边分开记录，CFG 默认只绘制普通边，因此图中的异常处理节点（handler）可能没有可见前驱，甚至表现为孤立节点：进入它们的异常边被隐藏了。使用 `-cfg --cfg-exception-edges` 可以同时绘制异常边，图中以标有 `exception` 的虚线表示。
+
+上图是在 `try-catch` 包装之前生成的 CFG。最终伪代码会将 `.catchall` 区域输出为 `try { ... } catch { ... }`，只是结果相较原始 ArkTS 仍会更冗长。
 
 ## 注意事项
 蒲篮尽可能输出合法的 ArkTS/TypeScript 代码，但不是所有情况都能够做到或者容易做到这一点。

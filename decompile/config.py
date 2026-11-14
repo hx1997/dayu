@@ -47,6 +47,7 @@ class DecompilerConfig:
         self.extra_mlir_passes: typing.List[typing.Tuple[typing.Callable, typing.List]] = []
 
         self.view_cfg = False
+        self.cfg_exception_edges = False
 
     def set_config(self, config: dict):
         self.abc_file = config.get('abc', self.abc_file)
@@ -71,6 +72,7 @@ class DecompilerConfig:
         self.prettify_method_calls = config.get('prettify_method_calls', self.prettify_method_calls)
         self.extra_mlir_passes = config.get('extra_mlir_passes', self.extra_mlir_passes)
         self.view_cfg = config.get('view_cfg', self.view_cfg)
+        self.cfg_exception_edges = config.get('cfg_exception_edges', self.cfg_exception_edges)
 
 
 class DecompileOutputLevel(IntEnum):
