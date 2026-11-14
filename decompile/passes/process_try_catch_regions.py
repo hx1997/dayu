@@ -61,16 +61,18 @@ class ProcessTryCatchRegions(MethodPass):
     def create_try_catch_node(self, region, try_nodes, handler_nodes):
         node = IRBlock(parent_method=None)
         node.insert_insn(UnknownNAC('try {', []))
-        structural_labels = {region.try_begin, region.try_end, region.handler_begin, region.handler_end}
+        boundary_labels = {region.try_begin, region.try_end, region.handler_begin, region.handler_end}
+        # The compiler's layout jump skips the handler on normal completion. It
+        # targets the first instruction after the handler, not an arbitrary
+        # boundary label inside the try/handler layout.
+        layout_target = region.handler_end
 
         for block in try_nodes:
             for insn in block.insns:
-                # Jumps that only skip from try_end to handler_end are structural
-                # artifacts; once we emit a textual try/catch wrapper they should disappear.
                 if (insn.type is NAddressCodeType.UNCOND_JUMP and
-                        insn.target.value in self.structural_labels):
+                        insn.target.value == layout_target):
                     continue
-                if insn.label in structural_labels:
+                if insn.label in boundary_labels:
                     insn.label = ''
                 node.insert_insn(insn)
 
@@ -78,7 +80,7 @@ class ProcessTryCatchRegions(MethodPass):
 
         for block in handler_nodes:
             for insn in block.insns:
-                if insn.label in structural_labels:
+                if insn.label in boundary_labels:
                     insn.label = ''
                 node.insert_insn(insn)
 
@@ -115,6 +117,8 @@ class ProcessTryCatchRegions(MethodPass):
         for block in region_nodes:
             block.clear_successors()
             block.clear_predecessors()
+            block.clear_exception_successors()
+            block.clear_exception_predecessors()
             if block in method.blocks:
                 method.blocks.remove(block)
 

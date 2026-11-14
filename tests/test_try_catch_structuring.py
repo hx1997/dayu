@@ -4,6 +4,9 @@ from pathlib import Path
 from ark.abcreader import AbcReader
 from decompile.config import DecompilerConfig, DecompileGranularity, DecompileOutputLevel
 from decompile.decompiler import Decompiler
+from decompile.ir.basicblock import IRBlock
+from decompile.ir.method import IRMethod, ResolvedTryRegion
+from pandasm.method import PandasmTryCatchRegion
 from pandasm.reader import PandasmReader
 
 
@@ -30,6 +33,28 @@ def decompile_method_output(abc_path, pandasm_path, class_name, method_name):
 
 
 class TryCatchStructuringTests(unittest.TestCase):
+    def test_exception_edges_are_separate_from_normal_edges(self):
+        method = IRMethod('exception_edges')
+        try_block = IRBlock(method)
+        handler_block = IRBlock(method)
+        continuation = IRBlock(method)
+        try_block.origin_block_ids = {0}
+        handler_block.origin_block_ids = {1}
+        continuation.origin_block_ids = {2}
+        try_block.add_successor(continuation)
+        method.resolved_try_regions = [ResolvedTryRegion(
+            region=PandasmTryCatchRegion('try_begin', 'try_end', 'handler_begin', 'handler_end'),
+            try_block_ids={0},
+            handler_block_ids={1},
+        )]
+
+        method.rebuild_exception_edges()
+
+        self.assertEqual(try_block.successors, [continuation])
+        self.assertEqual(try_block.exception_successors, [handler_block])
+        self.assertEqual(handler_block.exception_predecessors, [try_block])
+        self.assertEqual(handler_block.predecessors, [])
+
     def test_single_try_catch_is_emitted(self):
         output = decompile_method_output(
             MODULES_ABC,

@@ -34,7 +34,43 @@ class IRMethod:
         self.blocks.append(block)
 
     def remove_block(self, block: IRBlock):
+        for predecessor in block.exception_predecessors.copy():
+            block.remove_exception_predecessor(predecessor)
+        for successor in block.exception_successors.copy():
+            block.remove_exception_successor(successor)
         self.blocks.remove(block)
+
+    def rebuild_exception_edges(self):
+        """Rebuild catchall edges from resolved lexical regions.
+
+        Normal predecessors/successors remain untouched. Origin ids allow this
+        relation to survive block-preserving IR passes.
+        """
+        for block in self.blocks:
+            block.clear_exception_predecessors()
+            block.clear_exception_successors()
+
+        for resolved in self.resolved_try_regions:
+            try_blocks = {
+                block for block in self.blocks
+                if block.origin_block_ids.intersection(resolved.try_block_ids)
+            }
+            handler_blocks = sorted(
+                (
+                    block for block in self.blocks
+                    if block.origin_block_ids.intersection(resolved.handler_block_ids)
+                ),
+                key=lambda block: min(block.origin_block_ids),
+            )
+            if not try_blocks or not handler_blocks:
+                continue
+            # The current PandasmTryCatchRegion represents one catchall range,
+            # so its handler range has one entry block. Keep the loop explicit
+            # for nested/reduced origin sets and future multiple-handler entries.
+            handler = handler_blocks[0]
+            for block in try_blocks:
+                if block is not handler:
+                    block.add_exception_successor(handler)
 
     def erase_from_parent(self):
         if not self.parent_class:

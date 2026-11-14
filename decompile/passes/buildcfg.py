@@ -128,6 +128,8 @@ class BuildCFG(MethodPass):
                 handler_block_ids=handler_block_ids,
             ))
 
+        method.rebuild_exception_edges()
+
     def is_branch_insn(self, op):
         if op == 'jmp':
             return 'uncond'

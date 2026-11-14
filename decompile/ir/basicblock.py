@@ -13,6 +13,10 @@ class IRBlock:
 
         self.predecessors: typing.List[IRBlock] = []
         self.successors: typing.List[IRBlock] = []
+        # Exception edges are kept apart from normal control-flow edges. Normal
+        # CFG consumers must not interpret a handler as an if/loop successor.
+        self.exception_predecessors: typing.List[IRBlock] = []
+        self.exception_successors: typing.List[IRBlock] = []
         self.label2insn_map: typing.Dict[str, typing.Union[NAddressCode, None]] = {}
         self.defs = set()  # populated by the DefUseAnalysis pass
         self.uses = set()  # populated by the DefUseAnalysis pass
@@ -184,6 +188,40 @@ class IRBlock:
             self.successors.remove(successor)
         if self in successor.predecessors:
             successor.predecessors.remove(self)
+
+    def add_exception_predecessor(self, predecessor):
+        """Add an exception predecessor without changing normal CFG edges."""
+        if predecessor not in self.exception_predecessors:
+            self.exception_predecessors.append(predecessor)
+        if self not in predecessor.exception_successors:
+            predecessor.add_exception_successor(self)
+
+    def add_exception_successor(self, successor):
+        """Add an exception successor without changing normal CFG edges."""
+        if successor not in self.exception_successors:
+            self.exception_successors.append(successor)
+        if self not in successor.exception_predecessors:
+            successor.add_exception_predecessor(self)
+
+    def remove_exception_predecessor(self, predecessor):
+        if predecessor in self.exception_predecessors:
+            self.exception_predecessors.remove(predecessor)
+        if self in predecessor.exception_successors:
+            predecessor.exception_successors.remove(self)
+
+    def remove_exception_successor(self, successor):
+        if successor in self.exception_successors:
+            self.exception_successors.remove(successor)
+        if self in successor.exception_predecessors:
+            successor.exception_predecessors.remove(self)
+
+    def clear_exception_predecessors(self):
+        for pred in self.exception_predecessors.copy():
+            self.remove_exception_predecessor(pred)
+
+    def clear_exception_successors(self):
+        for succ in self.exception_successors.copy():
+            self.remove_exception_successor(succ)
 
     def clear_predecessors(self):
         for pred in self.predecessors.copy():
