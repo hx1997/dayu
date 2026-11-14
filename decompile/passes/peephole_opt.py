@@ -1,4 +1,6 @@
 from decompile.ir.basicblock import IRBlock
+from decompile.ir.exception_semantics import live_before
+from decompile.ir.expr import ExprArg
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType
 from decompile.method_pass import MethodPass
@@ -22,10 +24,94 @@ class PeepholeOptimization(MethodPass):
                 insn_changed = False
                 first_time = False
                 old_block_insns = block.insns.copy()
+                self.fold_result_copy(block)
+                if not self.constrained:
+                    self.fold_single_use(block)
                 self.eliminate_redundant_load_store(block)
                 self.collapse_cond_jump(block)
                 if block.insns != old_block_insns:
                     insn_changed = True
+
+    def fold_result_copy(self, block: IRBlock):
+        # Move the result of E directly into its final register: t = E; x = t.
+        # E stays at the same position and is evaluated once, even if it throws.
+        live = set(self.out_l[block])
+        exception_live = self.exception_live.get(block, set())
+        live_after = {}
+        for insn in reversed(block.insns):
+            live_after[insn] = live
+            live = live_before(insn, live, exception_live)
+
+        for first, second in zip(block.insns.copy(), block.insns[1:].copy()):
+            if first not in block.insns or second not in block.insns:
+                continue
+            if first.type != NAddressCodeType.ASSIGN or second.type != NAddressCodeType.ASSIGN:
+                continue
+            if second.op or second.src2 is not None or second.src != first.dst:
+                continue
+            if any(arg.type not in ('reg', 'acc') or arg.ref_obj for arg in (first.dst, second.dst)):
+                continue
+            if first.dst == second.dst or first.dst in live_after[second]:
+                continue
+            # A later exception can still expose t to the handler. Also keep any
+            # label on the copy: another path may enter without evaluating E.
+            if first.dst in exception_live or second.label or second.label_aliases:
+                continue
+            first.dst = second.dst
+            second.erase_from_parent()
+
+    def fold_single_use(self, block: IRBlock):
+        # Only move into a direct operand of the next instruction. Earlier
+        # operands must be plain values, so evaluation of E keeps its order.
+        plain_types = {'reg', 'acc', 'imm', 'str', 'zero', 'true', 'false',
+                       'null', 'undefined', 'func', 'FunctionObject', 'NewTarget', 'module'}
+        for first, second in zip(block.insns.copy(), block.insns[1:].copy()):
+            if first not in block.insns or second not in block.insns:
+                continue
+            if first.type != NAddressCodeType.ASSIGN:
+                continue
+            temp = first.dst
+            if temp.type not in ('reg', 'acc') or temp.ref_obj:
+                continue
+            if second.label or second.label_aliases:
+                continue
+            if second.type == NAddressCodeType.ASSIGN:
+                if second.dst.type not in ('reg', 'acc') or second.dst.ref_obj:
+                    continue
+                operands = list(enumerate(second.args[1:], 1))
+            elif second.type == NAddressCodeType.CALL:
+                if second.dst.type not in ('reg', 'acc') or second.dst.ref_obj:
+                    continue
+                operands = list(enumerate(second.args[1:], 1))
+            elif second.type == NAddressCodeType.RETURN:
+                operands = [(0, second.retval)]
+            else:
+                continue
+            matches = [idx for idx, arg in operands if arg == temp]
+            if len(matches) != 1 or second.get_uses().count(temp) != 1:
+                continue
+            operand_index = matches[0]
+            if second.type == NAddressCodeType.ASSIGN and second.op in ('&&', '||', '??') and operand_index == 2:
+                continue
+            if any(arg.ref_obj or arg.type not in plain_types
+                   for idx, arg in operands if idx < operand_index):
+                continue
+            exception_live = self.exception_live.get(block, set())
+            if temp in exception_live:
+                continue
+            position = block.insns.index(second)
+            live_after = (DeadCodeElimination(self.out_l, self.exception_live).analyze_block(
+                block, False, block.insns[position + 1])
+                if position + 1 < len(block.insns) else self.out_l[block])
+            # A self-update consumes the old value once and writes a new one.
+            if temp in live_after and temp not in second.get_defs():
+                continue
+            value = (ExprArg(first.args[1:], 'arith', first.op) if first.op else first.src)
+            second.replace_arg(operand_index, value)
+            if first.label:
+                second.label_aliases.append(first.label)
+            second.label_aliases.extend(first.label_aliases)
+            first.erase_from_parent()
 
     def eliminate_redundant_load_store(self, block: IRBlock):
         block_insns_copy = block.insns.copy()

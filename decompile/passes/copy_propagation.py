@@ -4,6 +4,7 @@ from ordered_set import OrderedSet
 
 from decompile.ir.basicblock import IRBlock
 from decompile.ir.expr import ExprArg
+from decompile.ir.exception_semantics import may_throw
 from decompile.ir.method import IRMethod
 from decompile.ir.nac import NAddressCodeType, NAddressCode
 from decompile.method_pass import MethodPass
@@ -72,13 +73,26 @@ class CopyPropagation(MethodPass):
 
         return gen_block, kill_block
 
+    @staticmethod
+    def is_copy_candidate(insn):
+        if insn.type != NAddressCodeType.ASSIGN:
+            return False
+        # In x = x + 1, the RHS reads the old x. After the write, x no longer
+        # means that old value, so expanding it as x + 1 would add one again.
+        if insn.dst in insn.get_uses():
+            return False
+        # DCE keeps operations that may throw, even when their result is unused.
+        # Expanding those operations would leave both the original evaluation and
+        # the new one. Share DCE's rule so getters and conversions run only once.
+        return not may_throw(insn)
+
     def collect_copies(self, method: IRMethod, stop_on_insn=None):
         copies = OrderedSet()
         for block in method.blocks:
             for insn in block.insns:
                 if insn == stop_on_insn:
                     break
-                if insn.type == NAddressCodeType.ASSIGN:
+                if self.is_copy_candidate(insn):
                     copies.add(insn)
         return copies
 
@@ -88,7 +102,7 @@ class CopyPropagation(MethodPass):
         # gen is the set of copies (x=y) defined in this block without x or y being subsequently redefined in it
         # first add to the set this assign (i.e. copy) instruction — only for ASSIGN, not CALL
         # (CALL still updates def_block and kills existing gen entries below)
-        if insn.type == NAddressCodeType.ASSIGN:
+        if self.is_copy_candidate(insn):
             gen_block.add(insn)
 
         # then, remove a previous copy from the gen set if any argument in it is redefined
@@ -174,10 +188,10 @@ class CopyPropagation(MethodPass):
         return len(block.successors) == 0
 
     def replace_copies(self, copies, in_c, in_r):
-        # Single-pass, block-level replacement to avoid repeated collect/analyze per copy+insn
-        # Track per-copy state across the whole method
-        replaced_once_map = {c: False for c in copies}
-        all_uses_replaced_map = {c: True for c in copies}
+        # Replace uses here, but leave assignments for DCE to remove. A successful
+        # replacement does not mean every use was replaced: returns, throws, and
+        # handlers may still need the original value. DCE checks those uses through
+        # liveness after this pass has finished.
 
         # helper to determine whether a definition insn kills a copy
         def def_kills_copy(def_insn, copy_):
@@ -225,16 +239,7 @@ class CopyPropagation(MethodPass):
                     if copy_.src2 is not None and self.constrained:
                         continue
                     if copy_.dst in vars_use:
-                        # if copy is currently reaching this insn, attempt replacement
-                        if copy_ in current_copies:
-                            if self.replace_var_use(insn, copy_):
-                                replaced_once_map[copy_] = True
-                            else:
-                                all_uses_replaced_map[copy_] = False
-                        else:
-                            # conservative fallback: if it's not in current_copies but reaches block overall, mark not replaceable
-                            if copy_ in in_r.get(block, OrderedSet()):
-                                all_uses_replaced_map[copy_] = False
+                        self.replace_var_use(insn, copy_)
 
                 # now update def/gen info with this insn (if it's a defining insn)
                 if insn.type in [NAddressCodeType.ASSIGN, NAddressCodeType.CALL]:
@@ -250,15 +255,8 @@ class CopyPropagation(MethodPass):
                                 pass
 
                     # if this insn itself is an ASSIGN copy, add to current_copies (so later insns can see it)
-                    if insn.type == NAddressCodeType.ASSIGN:
+                    if self.is_copy_candidate(insn):
                         current_copies.add(insn)
-
-            # end of block
-
-        # after scanning all blocks, remove copies that were replaced everywhere and at least once
-        for copy_ in list(copies):
-            if replaced_once_map.get(copy_, False) and all_uses_replaced_map.get(copy_, True):
-                copy_.erase_from_parent()
 
     def analyze_assign_for_replace(self, insn: NAddressCode):
         vars_use = OrderedSet([insn.args[1]])

@@ -11,13 +11,19 @@ from pandasm.insn import PandasmInsnArgument
 ACC = PandasmInsnArgument('acc')
 
 
+def operator_may_throw(op):
+    # These operators do not coerce objects or invoke user code. Arithmetic,
+    # loose equality, and ordering still need type information before relaxing.
+    return bool(op) and op not in ('!', '===', '!==')
+
+
 def argument_may_throw(arg):
     # These operations may fail before the assignment completes, so the
     # destination must still be treated as its old value on the exception path.
     if arg.ref_obj or arg.type in ('object', 'array'):
         return True
     if isinstance(arg, ExprArg):
-        return bool(arg.op) or any(argument_may_throw(a) for a in arg.value)
+        return arg.expr_type != 'arith' or operator_may_throw(arg.op) or any(argument_may_throw(a) for a in arg.value)
     return False
 
 
@@ -27,7 +33,7 @@ def may_throw(insn):
     if insn.type in (T.CALL, T.UNCOND_THROW, T.COND_THROW, T.UNKNOWN, T.IMPORT):
         return True
     if insn.type == T.ASSIGN:
-        return bool(insn.op) or any(argument_may_throw(a) for a in insn.args)
+        return operator_may_throw(insn.op) or any(argument_may_throw(a) for a in insn.args)
     return False
 
 

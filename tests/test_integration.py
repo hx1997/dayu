@@ -57,7 +57,13 @@ class IntegrationTests(unittest.TestCase):
         self.assertIn('while (v0 < 0x5) {', output)
         self.assertIn("import { default } as hilog from '@ohos:hilog';", output)
         self.assertIn("if (v1 == true) throw 'Value of \"hilog\" is undefined'", output)
-        self.assertIn('return v2', output)
+        # The final single-use copy can move directly into return.
+        self.assertTrue(output.endswith('return v0'))
+        # The result copy folds into the increment without evaluating it twice.
+        self.assertRegex(output, r'(v\d+) = __ToNumeric__\(v0\)\nv0 = \1 \+ 0x1\n')
+        self.assertEqual(output.count('"world" + v0'), 1)
+        self.assertIn('hilog.info(hilog, 0x0, "hello", (("world" + v0) + ""))', output)
+        self.assertEqual(output.count('hilog.info'), 1)
 
     def test_decompile_hwsample_image_method_matches_golden_snippets(self):
         output = self.decompile_method_output(
@@ -68,11 +74,13 @@ class IntegrationTests(unittest.TestCase):
         )
 
         self.assertIn('v2.width = a0', output)
-        self.assertIn('v2.height = ((a0 / a2) * a3)', output)
+        self.assertIn('v1 = (a0 / a2) * a3\nv2.height = v1', output)
         self.assertIn('v2.height = a1', output)
-        self.assertIn('v2.width = ((a1 / a3) * a2)', output)
-        self.assertIn('v2.scale = (v8["width"] / a2)', output)
-        self.assertIn('return v1', output)
+        self.assertIn('v1 = (a1 / a3) * a2\nv2.width = v1', output)
+        # Move the sole width read into the division without duplicating it.
+        self.assertIn('v1 = v2.width / a2\nv2.scale = v1', output)
+        self.assertEqual(output.count('v2.width / a2'), 1)
+        self.assertTrue(output.endswith('return v2'))
 
     def test_cli_output_file_writes_decompiled_code(self):
         with tempfile.TemporaryDirectory() as temp_dir:
