@@ -24,7 +24,8 @@ class AbcHeader9(AbcHeader):
 
     def check_version(self):
         major, minor, feature, build = self.get_version(self.version)
-        if major < 9:
+        version = (major, minor, feature, build)
+        if version < (9, 0, 0, 0) or version >= (12, 0, 1, 0):
             raise ValueError(
-                f'{self.__class__.__name__}: abc version mismatch, expected >= 9.0.0.0, <= 12.0.1.0, got {major}.{minor}.{feature}.{build}. Use the correct version of AbcHeader!')
+                f'{self.__class__.__name__}: abc version mismatch, expected >= 9.0.0.0, < 12.0.1.0, got {major}.{minor}.{feature}.{build}. Use the correct version of AbcHeader!')
 

@@ -29,13 +29,14 @@ class AbcReader:
 
     @classmethod
     def get_abc_file(cls, buf, version):
-        major, minor, feature, build = version
-        if major >= 12 and minor >= 0 and feature >= 1 and build >= 0:
+        abc_version = tuple(version)
+        if abc_version >= (12, 0, 0, 0):
             return AbcFile12.from_buffer(buf)
-        elif major >= 9 and minor >= 0 and feature >= 0 and build >= 0:
+        elif abc_version >= (9, 0, 0, 0):
             return AbcFile9.from_buffer(buf)
         else:
-            raise NotImplementedError(f'{cls.__name__}: unsupported abc version {major}.{minor}.{feature}.{build}')
+            version_text = '.'.join(map(str, version))
+            raise NotImplementedError(f'{cls.__name__}: unsupported abc version {version_text}')
 
 if __name__ == '__main__':
     abc: AbcFile = AbcReader.from_file(r"C:\Users\hx075\Desktop\pandasm\modules12.abc")
