@@ -12,6 +12,8 @@ class CFGUtils:
         for bounds in method.resolved_try_regions:
             try_ids = bounds.try_block_ids
             handler_ids = bounds.handler_block_ids
+            if handler_ids is None:
+                return True
             in_try = bool(origin_ids.intersection(try_ids))
             in_handler = bool(origin_ids.intersection(handler_ids))
             in_region = in_try or in_handler

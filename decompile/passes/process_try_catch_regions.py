@@ -8,6 +8,10 @@ class ProcessTryCatchRegions(MethodPass):
     def run_on_method(self, method: IRMethod):
         if not method.resolved_try_regions:
             return
+        # A three-label handler has a known entry but no proven end. Keep all
+        # ordinary pseudocode transformations, but do not invent catch braces.
+        if method.low_level_exception_fallback:
+            return
 
         # These labels delimit synthetic structure only. They may be stripped once
         # we know no remaining jump still targets them.
@@ -45,7 +49,7 @@ class ProcessTryCatchRegions(MethodPass):
             if try_set.intersection(handler_set):
                 continue
 
-            node = self.create_try_catch_node(bounds.region, try_nodes, handler_nodes)
+            node = self.create_try_catch_node(bounds.region, try_nodes, handler_nodes, bounds.continuation_label)
             node.origin_block_ids = self.union_origin_block_ids(try_nodes + handler_nodes)
             self.replace_region_nodes(method, node, try_nodes + handler_nodes)
 
@@ -58,17 +62,18 @@ class ProcessTryCatchRegions(MethodPass):
             origin_ids.update(block.origin_block_ids)
         return origin_ids
 
-    def create_try_catch_node(self, region, try_nodes, handler_nodes):
+    def create_try_catch_node(self, region, try_nodes, handler_nodes, continuation_label=None):
         node = IRBlock(parent_method=None)
         node.insert_insn(UnknownNAC('try {', []))
         boundary_labels = {region.try_begin, region.try_end, region.handler_begin, region.handler_end}
-        # The compiler's layout jump skips the handler on normal completion. It
-        # targets the first instruction after the handler, not an arbitrary
-        # boundary label inside the try/handler layout.
-        layout_target = region.handler_end
+        # This is where execution continues after try/catch. Only jumps to this
+        # label can be replaced by simply reaching the closing brace.
+        layout_target = continuation_label or region.handler_end
 
         for block in try_nodes:
             for insn in block.insns:
+                # A successful try already skips catch in the output.
+                # Remove the jump that did this in bytecode.
                 if (insn.type is NAddressCodeType.UNCOND_JUMP and
                         insn.target.value == layout_target):
                     continue
@@ -80,6 +85,11 @@ class ProcessTryCatchRegions(MethodPass):
 
         for block in handler_nodes:
             for insn in block.insns:
+                # Reaching the end of catch goes to the same place as this jump.
+                # Remove it, but keep jumps that go somewhere else.
+                if (insn.type is NAddressCodeType.UNCOND_JUMP and
+                        insn.target.value == layout_target):
+                    continue
                 if insn.label in boundary_labels:
                     insn.label = ''
                 node.insert_insn(insn)

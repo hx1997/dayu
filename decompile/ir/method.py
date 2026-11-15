@@ -11,10 +11,12 @@ from pandasm.method import PandasmTryCatchRegion
 @dataclass
 class ResolvedTryRegion:
     # region preserves the original Pandasm exception-table entry, while the
-    # block-id sets point at the current CFG blocks that cover that lexical span.
+    # block-id sets identify bodies; None means the handler extent is unknown.
     region: PandasmTryCatchRegion
     try_block_ids: typing.Set[int]
-    handler_block_ids: typing.Set[int]
+    handler_block_ids: typing.Set[int] | None
+    handler_entry_id: int | None = None
+    continuation_label: str | None = None
 
 
 class IRMethod:
@@ -25,6 +27,8 @@ class IRMethod:
         self.try_regions: typing.List[PandasmTryCatchRegion] = []
         # IR-level resolution of try_regions onto the CFG blocks built for this method.
         self.resolved_try_regions: typing.List[ResolvedTryRegion] = []
+        self.raw_listing = []
+        self.low_level_exception_fallback = False
         self.parent_class = parent_class
         if self.parent_class:
             self.parent_class.insert_method(self)
@@ -55,13 +59,11 @@ class IRMethod:
                 block for block in self.blocks
                 if block.origin_block_ids.intersection(resolved.try_block_ids)
             }
-            handler_blocks = sorted(
-                (
-                    block for block in self.blocks
-                    if block.origin_block_ids.intersection(resolved.handler_block_ids)
-                ),
-                key=lambda block: min(block.origin_block_ids),
-            )
+            entry_id = resolved.handler_entry_id
+            # Older pass callers may supply an explicit range without an entry id.
+            if entry_id is None and resolved.handler_block_ids:
+                entry_id = min(resolved.handler_block_ids)
+            handler_blocks = [block for block in self.blocks if entry_id in block.origin_block_ids]
             if not try_blocks or not handler_blocks:
                 continue
             # The current PandasmTryCatchRegion represents one catchall range,

@@ -145,6 +145,12 @@ class Decompiler:
         if self.config.output_level is DecompileOutputLevel.RAW_IR or self.config.output_level is DecompileOutputLevel.LOW_LEVEL_IR:
             return method
 
+        if method.low_level_exception_fallback:
+            # Keep normal optimization and pseudocode passes. Only the exception
+            # region wrapper is skipped later because its handler bounds are unknown.
+            logging.getLogger(__name__).warning(
+                'Handler extent is unknown in %s; skipping catch region wrapping.', method.name)
+
         self.llir_to_mlir(method)
         self.decompiled_ir_level = DecompileOutputLevel.MEDIUM_LEVEL_IR
         if self.config.output_level is DecompileOutputLevel.MEDIUM_LEVEL_IR:

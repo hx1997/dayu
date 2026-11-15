@@ -37,6 +37,11 @@ class Pandasm2RawIR:
     def transform_method(cls, pa_method: PandasmMethod, parent_ir_class: IRClass = None):
         ir_method = IRMethod(pa_method.name, parent_ir_class)
         ir_method.try_regions = pa_method.try_catch_regions
+        ir_method.raw_listing = [
+            (f'{insn.label}:\n' if insn.label else '')
+            + f'{insn.mnemonic} {", ".join(insn.operands)}'.rstrip()
+            for insn in pa_method.insns
+        ]
 
         # in the original PandasmFile, there's no concept of a basic block;
         # in the raw IR, we put all NACs (IR instructions) into one big IRBlock

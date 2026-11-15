@@ -7,8 +7,8 @@ from pandasm.insn import PandasmInsn
 class PandasmTryCatchRegion:
     """Represents a single .catchall try-catch region parsed from Panda Assembly.
 
-    Fields correspond to the four comma-separated labels in the directive:
-        .catchall try_begin, try_end, handler_begin, handler_end
+    The handler end label is optional:
+        .catchall try_begin, try_end, handler_begin [, handler_end]
 
     Note: handler_begin may equal try_end (degenerate case) when the handler
     block starts immediately after the try body with no intervening jmp.
@@ -17,7 +17,7 @@ class PandasmTryCatchRegion:
     yet supported and are silently skipped during parsing.
     """
 
-    def __init__(self, try_begin: str, try_end: str, handler_begin: str, handler_end: str, catch_type=None):
+    def __init__(self, try_begin: str, try_end: str, handler_begin: str, handler_end: str | None = None, catch_type=None):
         self.try_begin = try_begin
         self.handler_begin = handler_begin
         self.try_end = try_end

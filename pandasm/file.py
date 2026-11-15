@@ -212,13 +212,15 @@ class PandasmFile(DecompilerInputFile):
             elif body_line.startswith('.'):
                 # this is a pseudo-instruction
                 if body_line.startswith('.catchall '):
-                    # format: .catchall try_begin, try_end, handler_begin, handler_end
+                    # Optimized bytecode may omit the handler's extent.
                     labels = [s.strip() for s in body_line[len('.catchall '):].split(',')]
+                    if len(labels) not in (3, 4):
+                        raise ValueError(f'Invalid .catchall directive: {body_line}')
                     region = PandasmTryCatchRegion(
                         try_begin=labels[0],
                         try_end=labels[1],
                         handler_begin=labels[2],
-                        handler_end=labels[3],
+                        handler_end=labels[3] if len(labels) == 4 else None,
                     )
                     method.try_catch_regions.append(region)
                 # .catch — typed catch directive; not yet supported, skip silently for now.
