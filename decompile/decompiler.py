@@ -7,6 +7,7 @@ from decompile.ir.irclass import IRClass
 from decompile.ir.method import IRMethod
 from decompile.ir.module import IRModule
 from decompile.pa2rawir import Pandasm2RawIR
+from decompile.passes.resolve_exception_regions import ResolveExceptionRegions
 from decompile.passes.buildcfg import BuildCFG
 from decompile.passes.control_flow_structuring import ControlFlowStructuring
 from decompile.passes.control_flow_structuring_old import ControlFlowStructuringOld
@@ -15,7 +16,7 @@ from decompile.passes.dead_code import DeadCodeElimination
 from decompile.passes.defuse import DefUseAnalysis
 from decompile.passes.method_call_prettify import MethodCallPrettify
 from decompile.passes.prop_access_prettify import PropAccessPrettify
-from decompile.passes.process_try_catch_regions import ProcessTryCatchRegions
+from decompile.passes.process_exception_regions import ProcessExceptionRegions
 from decompile.passes.print_pcode import PrintPcode
 from decompile.passes.live_variable import LiveVariableAnalysis
 from decompile.passes.peephole_opt import PeepholeOptimization
@@ -145,11 +146,11 @@ class Decompiler:
         if self.config.output_level is DecompileOutputLevel.RAW_IR or self.config.output_level is DecompileOutputLevel.LOW_LEVEL_IR:
             return method
 
-        if method.low_level_exception_fallback:
+        if method.handler_extent_unknown:
             # Keep normal optimization and pseudocode passes. Only the exception
-            # region wrapper is skipped later because its handler bounds are unknown.
+            # region wrapper is skipped because its handler bounds are unknown.
             logging.getLogger(__name__).warning(
-                'Handler extent is unknown in %s; skipping catch region wrapping.', method.name)
+                'Handler extent is unknown in %s; skipping exception region wrapping.', method.name)
 
         self.llir_to_mlir(method)
         self.decompiled_ir_level = DecompileOutputLevel.MEDIUM_LEVEL_IR
@@ -181,6 +182,7 @@ class Decompiler:
 
     def rawir_to_llir(self, method: IRMethod):
         BuildCFG().run_on_method(method)
+        ResolveExceptionRegions().run_on_method(method)
         # convert to low-level IR
         RawIR2LLIR().run_on_method(method)
 
@@ -280,7 +282,7 @@ class Decompiler:
                     self.write_cfg_to_file(method, cfg_path, True, self.config.cfg_exception_edges)
                     print(f'CFG saved to {cfg_path}.png', end='\n')
 
-                ProcessTryCatchRegions().run_on_method(method)
+                ProcessExceptionRegions().run_on_method(method)
 
     @staticmethod
     def _safe_cfg_path(method: IRMethod):

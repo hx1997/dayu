@@ -4,13 +4,13 @@ from decompile.ir.nac import NAddressCodeType, UnknownNAC
 from decompile.method_pass import MethodPass
 
 
-class ProcessTryCatchRegions(MethodPass):
+class ProcessExceptionRegions(MethodPass):
     def run_on_method(self, method: IRMethod):
         if not method.resolved_try_regions:
             return
         # A three-label handler has a known entry but no proven end. Keep all
         # ordinary pseudocode transformations, but do not invent catch braces.
-        if method.low_level_exception_fallback:
+        if method.handler_extent_unknown:
             return
 
         # These labels delimit synthetic structure only. They may be stripped once

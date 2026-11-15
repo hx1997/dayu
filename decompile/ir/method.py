@@ -27,8 +27,7 @@ class IRMethod:
         self.try_regions: typing.List[PandasmTryCatchRegion] = []
         # IR-level resolution of try_regions onto the CFG blocks built for this method.
         self.resolved_try_regions: typing.List[ResolvedTryRegion] = []
-        self.raw_listing = []
-        self.low_level_exception_fallback = False
+        self.handler_extent_unknown = False
         self.parent_class = parent_class
         if self.parent_class:
             self.parent_class.insert_method(self)

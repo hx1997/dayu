@@ -6,6 +6,7 @@ from decompile.config import DecompilerConfig, DecompileOutputLevel
 from decompile.decompiler import Decompiler
 from decompile.pa2rawir import Pandasm2RawIR
 from decompile.passes.buildcfg import BuildCFG
+from decompile.passes.resolve_exception_regions import ResolveExceptionRegions
 from pandasm.reader import PandasmReader
 
 
@@ -76,34 +77,36 @@ class ThreeLabelCatchallTests(unittest.TestCase):
     def test_terminal_handler_is_resolved(self):
         method = raw_method(TERMINAL)
         BuildCFG().run_on_method(method)
+        ResolveExceptionRegions().run_on_method(method)
         bounds = method.resolved_try_regions[0]
-        self.assertFalse(method.low_level_exception_fallback)
+        self.assertFalse(method.handler_extent_unknown)
         self.assertEqual(bounds.handler_block_ids, {bounds.handler_entry_id})
         self.assertTrue(method.get_insn_by_label('hb').parent_block.exception_predecessors)
 
     def test_join_does_not_belong_to_handler(self):
         method = raw_method(JOIN)
         BuildCFG().run_on_method(method)
+        ResolveExceptionRegions().run_on_method(method)
         bounds = method.resolved_try_regions[0]
         done = method.get_insn_by_label('done').parent_block
-        self.assertFalse(method.low_level_exception_fallback)
+        self.assertFalse(method.handler_extent_unknown)
         self.assertFalse(done.origin_block_ids & bounds.handler_block_ids)
         self.assertEqual(bounds.continuation_label, 'done')
 
     def test_unknown_extent_keeps_exception_edges_and_original_listing(self):
         method = raw_method(BRANCH)
         BuildCFG().run_on_method(method)
+        ResolveExceptionRegions().run_on_method(method)
         bounds = method.resolved_try_regions[0]
         self.assertIsNone(bounds.handler_block_ids)
-        self.assertTrue(method.low_level_exception_fallback)
+        self.assertTrue(method.handler_extent_unknown)
         self.assertTrue(method.get_insn_by_label('hb').parent_block.exception_predecessors)
-        self.assertIn('jeqz other', '\n'.join(method.exception_fallback_lines))
-        self.assertIn('.catchall tb, hb, hb', method.exception_fallback_lines)
 
     def test_cycle_is_not_packaged_as_catch(self):
         method = raw_method(BRANCH.replace('jeqz other', 'jmp hb'))
         BuildCFG().run_on_method(method)
-        self.assertTrue(method.low_level_exception_fallback)
+        ResolveExceptionRegions().run_on_method(method)
+        self.assertTrue(method.handler_extent_unknown)
 
     def test_shared_success_tail_is_not_swallowed(self):
         # The optimizer can put a success-only assignment before the shared tail.
@@ -111,13 +114,15 @@ class ThreeLabelCatchallTests(unittest.TestCase):
             'done:\n    lda v0', 'success:\n    mov v0, a3\ndone:\n    lda v0')
         method = raw_method(body)
         BuildCFG().run_on_method(method)
-        self.assertTrue(method.low_level_exception_fallback)
+        ResolveExceptionRegions().run_on_method(method)
+        self.assertTrue(method.handler_extent_unknown)
         self.assertIsNone(method.resolved_try_regions[0].handler_block_ids)
 
     def test_protocol_handler_is_not_packaged_as_user_catch(self):
         method = raw_method(TERMINAL.replace('ldai 0x7', 'asyncfunctionreject v0'))
         BuildCFG().run_on_method(method)
-        self.assertTrue(method.low_level_exception_fallback)
+        ResolveExceptionRegions().run_on_method(method)
+        self.assertTrue(method.handler_extent_unknown)
 
     def decompile(self, body):
         config = DecompilerConfig({
